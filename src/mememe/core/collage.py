@@ -9,7 +9,9 @@ import io
 from pathlib import Path
 
 import qrcode
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
+
+from mememe.core.fonts import cjk_font as _font
 
 W, H = 1080, 1440  # 3:4 朋友圈/小红书原生比例
 YELLOW = (255, 210, 61, 255)
@@ -25,19 +27,6 @@ STICKER = 290
 # 每格固定的旋转/抖动（确定性散落感，不用随机）
 ROTATIONS = [-6, 4, -3, 5, -5, 3, -4, 6, -3]
 JITTERS = [(-8, 6), (10, -4), (-4, 10), (6, 8), (-10, -6), (8, 4), (-6, -8), (4, -10), (0, 4)]
-
-_FONT_CANDIDATES = [
-    "/System/Library/Fonts/PingFang.ttc",
-    "/System/Library/Fonts/STHeiti Medium.ttc",
-    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-]
-
-
-def _font(size: int) -> ImageFont.ImageFont | ImageFont.FreeTypeFont:
-    for path in _FONT_CANDIDATES:
-        if Path(path).exists():
-            return ImageFont.truetype(path, size)
-    return ImageFont.load_default()
 
 
 def _paste_with_shadow(canvas: Image.Image, layer: Image.Image, xy: tuple[int, int]) -> None:

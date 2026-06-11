@@ -6,15 +6,9 @@
 
 import io
 import zipfile
-from pathlib import Path
+from PIL import Image, ImageDraw
 
-from PIL import Image, ImageDraw, ImageFont
-
-_FONT_CANDIDATES = [
-    "/System/Library/Fonts/PingFang.ttc",
-    "/System/Library/Fonts/STHeiti Medium.ttc",
-    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-]
+from mememe.core.fonts import cjk_font as _font
 
 _GUIDE = """微信表情开放平台上架清单（sticker.weixin.qq.com）
 
@@ -37,13 +31,6 @@ _GUIDE = """微信表情开放平台上架清单（sticker.weixin.qq.com）
 提示：如果用了 16 张全套生成，主图正好满足一套的最低数量；
 本套为 {n} 张{hint}。
 """
-
-
-def _font(size: int):
-    for path in _FONT_CANDIDATES:
-        if Path(path).exists():
-            return ImageFont.truetype(path, size)
-    return ImageFont.load_default()
 
 
 def _banner(stickers: list[bytes], pack_name: str) -> bytes:
