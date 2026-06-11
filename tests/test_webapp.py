@@ -368,6 +368,12 @@ def test_generate_returns_429_when_at_capacity(client, monkeypatch):
     assert resp.status_code == 429
 
 
+def test_logo_served(client):
+    resp = client.get("/logo.png")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "image/png"
+
+
 def test_contact_qr_served_only_when_configured(client, tmp_path, monkeypatch):
     monkeypatch.setattr(webapp, "CONTACT_QR_FILE", tmp_path / "contact-qr.png")
     assert client.get("/api/contact-qr").status_code == 404

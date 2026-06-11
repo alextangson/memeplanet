@@ -67,6 +67,15 @@ def _qr_sticker(url: str) -> Image.Image:
     return tile
 
 
+def _brand_logo(size: int = 96) -> Image.Image:
+    """优先用正式 logo 资产（src/mememe/logo.png），缺失时退回手绘行星。"""
+    path = Path(__file__).parents[1] / "logo.png"
+    if path.exists():
+        img = Image.open(path).convert("RGBA")
+        return img.resize((size, size), Image.LANCZOS)
+    return _planet_logo(size)
+
+
 def _planet_logo(size: int = 96) -> Image.Image:
     """行星脸 logo，复刻站内 SVG：墨色环 + 橙色行星 + 笑脸。"""
     s = size * 4  # 4x 超采样抗锯齿
@@ -146,7 +155,7 @@ def build_collage(stickers: list[bytes], *, pack_name: str, qr_url: str) -> byte
     _accents(draw)
 
     # 顶部品牌区：logo + 站名，下面 pack 名贴纸牌
-    canvas.alpha_composite(_planet_logo(96), (52, 36))
+    canvas.alpha_composite(_brand_logo(96), (52, 36))
     draw.text((164, 58), "表情星球", fill=INK, font=_font(46), stroke_width=1, stroke_fill=INK)
     plaque = _name_plaque(pack_name).rotate(2.5, resample=Image.BICUBIC, expand=True)
     _paste_with_shadow(canvas, plaque, ((W - plaque.width) // 2, 152))

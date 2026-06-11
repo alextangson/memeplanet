@@ -582,6 +582,14 @@ def create_app() -> FastAPI:
             "captions": [m.caption for m in pack.memes[:8]],
         }
 
+    @app.get("/logo.png")
+    def logo() -> FileResponse:
+        return FileResponse(
+            Path(__file__).parent / "logo.png",
+            media_type="image/png",
+            headers={"Cache-Control": "public, max-age=86400"},
+        )
+
     @app.get("/api/contact-qr")
     def contact_qr() -> FileResponse:
         if not CONTACT_QR_FILE.exists():
