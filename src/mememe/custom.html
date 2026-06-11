@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AI 定制专属表情包｜表情星球</title>
-<meta name="description" content="和 AI 策划聊几句，定制一套只属于你的表情包剧本——个人专属、情侣日常、宠物、品牌 IP 吉祥物都能定制，写好直接生成。">
-<meta property="og:title" content="表情星球 AI 定制：聊几句，出一套专属表情包剧本">
+<meta name="description" content="和 AI 策划聊几句，定制一套只属于你的表情包主题——个人专属、情侣日常、宠物、品牌 IP 吉祥物都能定制，写好直接生成。">
+<meta property="og:title" content="表情星球 AI 定制：聊几句，出一套专属表情主题">
 <meta property="og:description" content="个人 · 情侣 · 宠物 · 品牌 IP，AI 策划帮你把口头禅和梗写进专属表情包。">
 <meta name="theme-color" content="#FFD23D">
 <link rel="icon" type="image/png" href="/logo.png">
@@ -99,7 +99,7 @@
 
   <header class="hero">
     <h1>聊几句，<em>定制</em>一套只属于你的表情包</h1>
-    <p class="sub">把你的口头禅、你们的小梗、品牌的口号，写进一套专属剧本——AI 策划帮你出题和文案，写好直接生成。</p>
+    <p class="sub">把你的口头禅、你们的小梗、品牌的口号，写进一套专属主题——AI 策划帮你出题和文案，写好直接生成。</p>
   </header>
 
   <main>
@@ -139,10 +139,10 @@
     <div class="row" style="margin-top:10px">
       <input class="search" id="agentInput" style="margin:0;flex:1" placeholder="比如：给我和对象的日常互动表情，她总叫我小笨蛋…" aria-label="描述定制需求">
       <button class="btn" id="agentSend" aria-label="发送"><svg viewBox="0 0 24 24"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4Z"/></svg></button>
-      <button class="btn primary" id="agentDraft">生成剧本</button>
+      <button class="btn primary" id="agentDraft">✨ 生成这套表情</button>
     </div>
     <div class="gotobar" id="gotobar">
-      <div class="txt"><b id="gotoName">剧本写好了！</b><br>回到主页上传照片，就能用它生成了</div>
+      <div class="txt"><b id="gotoName">这套表情写好了！</b><br>回到主页上传照片，就能用它生成了</div>
       <a class="btn primary" id="gotoBtn" href="/">去生成 →</a>
     </div>
   </div>
@@ -268,12 +268,12 @@ async function fetchWithProgress(url, fd, busy, label, timeoutMs) {
 
 async function agentMakeDraft() {
   if (!agentDraftId) { bubble('先说说你的需求，聊一两句我才好出方案～', 'ai'); return; }
-  const busy = bubble('正在写剧本，约 20–40 秒…', 'ai busy');
+  const busy = bubble('正在设计这套表情，约 20–40 秒…', 'ai busy');
   $('agentDraft').disabled = true;
   const fd = new FormData();
   fd.append('draft_id', agentDraftId);
   try {
-    const resp = await fetchWithProgress('/api/agent/draft', fd, busy, '正在写剧本，约 20–40 秒…', 95000);
+    const resp = await fetchWithProgress('/api/agent/draft', fd, busy, '正在设计这套表情，约 20–40 秒…', 95000);
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.detail || resp.status);
     busy.className = 'bub ai';
@@ -284,7 +284,7 @@ async function agentMakeDraft() {
   } catch (e) {
     busy.className = 'bub ai';
     busy.textContent = e.name === 'AbortError'
-      ? '策划这次想太久了（可能网络不稳），再点一次「生成剧本」试试～'
+      ? '策划这次想太久了（可能网络不稳），再点一次「生成这套表情」试试～'
       : '生成失败：' + (e.message || e);
     report('draft_fail', e.name === 'AbortError' ? 'timeout 95s' : (e.message || e));
   }

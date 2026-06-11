@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>表情星球｜用自己的照片做一整套专属微信表情包</title>
-<meta name="description" content="上传一张自拍、宠物照或合照，AI 帮你生成一整套人设一致的专属微信表情包——16 个梗、静态加动图，可直接导入微信、上架微信表情商店。支持自拍、情侣、宠物，AI 对话定制专属剧本。开源免费，照片不留存。">
+<meta name="description" content="上传一张自拍、宠物照或合照，AI 帮你生成一整套人设一致的专属微信表情包——16 个梗、静态加动图，可直接导入微信、上架微信表情商店。支持自拍、情侣、宠物，AI 对话定制专属主题。开源免费，照片不留存。">
 <meta name="keywords" content="微信表情包制作,用照片做表情包,AI表情包生成,表情包定制,情侣表情包,宠物表情包,专属表情包,微信表情上架">
 <link rel="canonical" href="https://meme-planet.com/">
 <meta property="og:type" content="website">
@@ -18,7 +18,7 @@
 {"@context":"https://schema.org","@graph":[
 {"@type":"WebApplication","name":"表情星球 memeplanet","applicationCategory":"DesignApplication","operatingSystem":"Web","description":"上传照片，AI 生成一整套人设一致的专属微信表情包，支持自拍、宠物、情侣，静态加动图，可上架微信表情商店。","offers":{"@type":"Offer","price":"0","priceCurrency":"CNY"}},
 {"@type":"FAQPage","mainEntity":[
-{"@type":"Question","name":"怎么用自己的照片做微信表情包？","acceptedAnswer":{"@type":"Answer","text":"上传一张正脸自拍、宠物照或合照，选一套梗剧本，AI 自动生成 16 个表情，长按保存就能导入微信。"}},
+{"@type":"Question","name":"怎么用自己的照片做微信表情包？","acceptedAnswer":{"@type":"Answer","text":"上传一张正脸自拍、宠物照或合照，选一套表情主题，AI 自动生成 16 个表情，长按保存就能导入微信。"}},
 {"@type":"Question","name":"做表情包要钱吗？","acceptedAnswer":{"@type":"Answer","text":"先免费生成 8 张，满意再解锁全套 16 张。项目开源免费。"}},
 {"@type":"Question","name":"可以做宠物或情侣表情包吗？","acceptedAnswer":{"@type":"Answer","text":"可以。上传宠物照做宠物表情包，上传两人合照做情侣表情包，AI 会保持每个角色一致。"}},
 {"@type":"Question","name":"生成的表情包能上架微信表情商店吗？","acceptedAnswer":{"@type":"Answer","text":"能。生成全套后一键导出上架素材包，按指南提交到微信表情开放平台即可。"}}
@@ -136,13 +136,17 @@
   .cap { position: absolute; bottom: 5px; left: 0; right: 0; text-align: center; font-size: 11px; color: var(--ink-3); pointer-events: none; font-weight: 600; }
   .spin { width: 22px; height: 22px; border: 3px solid #E9DDBE; border-top-color: var(--accent); border-radius: 50%; animation: r 1s linear infinite; }
   @keyframes r { to { transform: rotate(360deg); } }
-  .ibtn { position: absolute; width: 28px; height: 28px; border-radius: 9px; border: 1.5px solid var(--ink);
-          background: rgba(255,255,255,.96); display: flex; align-items: center; justify-content: center;
-          cursor: pointer; color: var(--ink); opacity: 0; transition: .15s; }
-  .ibtn:hover { background: var(--accent); color: #fff; }
+  .ibtn { position: absolute; width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--ink);
+          background: #fff; display: flex; align-items: center; justify-content: center;
+          cursor: pointer; color: var(--accent); opacity: 0; transition: .15s; box-shadow: 0 2px 0 rgba(26,21,5,.5); }
+  .ibtn:hover { background: var(--accent); color: #fff; transform: translateY(-1px); }
   .ibtn.tl { top: 5px; left: 5px; } .ibtn.tr { top: 5px; right: 5px; } .ibtn.br { bottom: 5px; right: 5px; }
   .cell:hover .ibtn { opacity: 1; }
   @media (hover: none) { .ibtn { opacity: 1; } }
+  .lg { display: inline-flex; align-items: center; gap: 3px; margin-right: 10px; white-space: nowrap; }
+  .lgi { display: inline-flex; width: 19px; height: 19px; border-radius: 50%; border: 1.5px solid var(--ink);
+         background: #fff; align-items: center; justify-content: center; color: var(--accent); }
+  .lgi svg { width: 11px; height: 11px; stroke: currentColor; stroke-width: 2.4; fill: none; stroke-linecap: round; stroke-linejoin: round; }
   .badge { position: absolute; top: 5px; right: 5px; font-size: 10px; font-weight: 900; background: var(--accent); color: #fff; border-radius: 6px; padding: 3px 6px; pointer-events: none; }
   .badge.busy { background: var(--ink-2); animation: blink 1.2s ease infinite; }
   .menu { position: absolute; inset: auto 4px 4px 4px; background: rgba(255,255,255,.99);
@@ -244,8 +248,8 @@
   </div>
 
   <div class="card">
-    <div class="label"><span class="n">2</span>选一套梗剧本（没有合适的？<a href="/custom" style="color:var(--accent)">AI 定制 →</a>）</div>
-    <input class="search" id="psearch" type="search" placeholder="搜剧本或梗：摸鱼 / 拿来吧你 / 想你了…" aria-label="搜索梗剧本">
+    <div class="label"><span class="n">2</span>选一套表情主题（没有合适的？<a href="/custom" style="color:var(--accent)">AI 定制 →</a>）</div>
+    <input class="search" id="psearch" type="search" placeholder="搜主题或梗：摸鱼 / 拿来吧你 / 想你了…" aria-label="搜索表情主题">
     <div class="packgrid" id="packs"></div>
   </div>
 
@@ -264,13 +268,15 @@
       <div class="txt"><b>还有 8 个隐藏梗 🔓</b><br>解锁全套 16 张，集齐你的专属人设</div>
       <button class="btn primary" id="unlockBtn">解锁全套</button>
     </div>
-    <p class="hint">把鼠标移到任意一张上：换一张（可改文案）· 让它动起来（可指定动作）<br>
-    手机上：长按图片保存 → 微信发给自己 → 长按「添加到表情」</p>
+    <p class="hint">每张图上有两个按钮：
+      <span class="lg"><span class="lgi"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 2v6h-6"/><path d="M21 8a9 9 0 1 0 2.4 8"/></svg></span>换一张（可改文案）</span>
+      <span class="lg"><span class="lgi"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11.5 3.2l1.4 3.9 3.9 1.4-3.9 1.4-1.4 3.9-1.4-3.9L6.2 8.5l3.9-1.4z"/><path d="M18 14l.9 2.4 2.4.9-2.4.9L18 20.6l-.9-2.4-2.4-.9 2.4-.9z"/></svg></span>让它动起来</span><br>
+    保存：长按图片 → 微信发给自己 → 长按「添加到表情」</p>
     <div class="actions" id="resultHooks" style="display:none">
       <button class="btn" id="restyleBtn">
         <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9c0-1-1.5-1.5-2.5-1-1.2.6-2.5-.3-2.5-1.5 0-.8.6-1.5 1.4-1.6L19 7.7A9 9 0 0 0 12 3z"/><circle cx="8" cy="10" r="1.2"/><circle cx="12" cy="7.5" r="1.2"/></svg>
         换个画风再来一套</button>
-      <a class="btn" href="/custom">这套不够戳你？AI 定制专属剧本 →</a>
+      <a class="btn" href="/custom">这套不够戳你？AI 定制专属主题 →</a>
     </div>
     <div class="actions" id="resultActions" style="display:none">
       <a class="btn" id="platformBtn" href="#" download>
@@ -298,7 +304,7 @@
     <h2 class="sec">三步，做出你的专属微信表情包</h2>
     <div class="steps">
       <div class="step"><b>1</b>上传一张<br>自拍 / 宠物 / 合照</div>
-      <div class="step"><b>2</b>选梗剧本<br>或 AI 对话定制</div>
+      <div class="step"><b>2</b>选主题<br>或 AI 对话定制</div>
       <div class="step"><b>3</b>逐张生成<br>长按导入微信</div>
     </div>
   </div>
@@ -308,7 +314,7 @@
     <h2 class="sec" style="margin-bottom:10px">常见问题</h2>
     <dl class="faq">
       <dt>怎么用自己的照片做微信表情包？</dt>
-      <dd>上传一张正脸自拍（宠物照、合照也行），选一套梗剧本，AI 自动生成 16 个人设一致的表情，长按保存就能导入微信。</dd>
+      <dd>上传一张正脸自拍（宠物照、合照也行），选一套表情主题，AI 自动生成 16 个人设一致的表情，长按保存就能导入微信。</dd>
       <dt>我的照片安全吗？</dt>
       <dd>照片仅在生成期间临时使用，不存储、不留底；历史记录只保留生成结果，不保留你的原图。</dd>
       <dt>可以做宠物 / 情侣表情包吗？</dt>
@@ -316,7 +322,7 @@
       <dt>生成的表情包能上架微信表情商店吗？</dt>
       <dd>能。生成全套后点「导出上架素材包」，规格齐全，照 <a href="https://github.com/alextangson/memeplanet/blob/main/docs/wechat-platform.md" target="_blank" rel="noopener">上架指南</a> 提交到微信表情开放平台即可。</dd>
       <dt>品牌 / IP 想批量定制专属表情？</dt>
-      <dd>去 <a href="/custom">AI 定制页</a> 聊出专属剧本就是起点；商用授权、高清源文件与代上架，在定制页留下联系方式即可。</dd>
+      <dd>去 <a href="/custom">AI 定制页</a> 聊出专属主题就是起点；商用授权、高清源文件与代上架，在定制页留下联系方式即可。</dd>
     </dl>
   </div>
 
@@ -382,7 +388,7 @@ window.addEventListener('unhandledrejection', (e) => report('js_reject', e.reaso
 
 const ICONS = {
   refresh: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 2v6h-6"/><path d="M21 8a9 9 0 1 0 2.4 8"/></svg>',
-  play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3l14 9-14 9V3z"/></svg>',
+  wand: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11.5 3.2l1.4 3.9 3.9 1.4-3.9 1.4-1.4 3.9-1.4-3.9L6.2 8.5l3.9-1.4z"/><path d="M18 14l.9 2.4 2.4.9-2.4.9L18 20.6l-.9-2.4-2.4-.9 2.4-.9z"/></svg>',
   lock: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
   face: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 10h.01M15 10h.01"/><path d="M8 15c1.5 1.5 6.5 1.5 8 0"/></svg>',
 };
@@ -529,7 +535,7 @@ async function errMessage(resp) {
 // ---- 生成 ----
 $('go').onclick = async () => {
   if (!selfie) { showToast('先上传一张照片'); return; }
-  if (!packId) { showToast('先选一套梗剧本'); return; }
+  if (!packId) { showToast('先选一套表情主题'); return; }
   $('go').disabled = true;
   try {
     const fd = new FormData();
@@ -618,14 +624,14 @@ function render(job) {
     } else if (img.anim_status === 'done') {
       cell.innerHTML = `<img src="${img.anim_url}?t=${Date.now()}" alt="${img.caption} 动图">
         <span class="badge">GIF</span>
-        <button class="ibtn br" title="换一种动法" aria-label="换一种动法">${ICONS.play}</button>`;
+        <button class="ibtn br" title="换一种动法" aria-label="换一种动法">${ICONS.wand}</button>`;
       cell.querySelector('.ibtn').onclick = (e) => { e.stopPropagation(); animMenu(img.index); };
     } else if (img.anim_status === 'running') {
       cell.innerHTML = `<img src="${img.url}" alt="${img.caption}"><span class="badge busy">动图中</span>`;
     } else {
       cell.innerHTML = `<img src="${img.url}?t=${Date.now()}" alt="${img.caption}">
         <button class="ibtn tl" title="换一张（可改文案）" aria-label="换一张">${ICONS.refresh}</button>
-        <button class="ibtn tr" title="让它动起来" aria-label="让它动起来">${ICONS.play}</button>`;
+        <button class="ibtn tr" title="让它动起来" aria-label="让它动起来">${ICONS.wand}</button>`;
       const [redo, anim] = cell.querySelectorAll('.ibtn');
       redo.onclick = (e) => { e.stopPropagation(); retry(img.index); };
       anim.onclick = (e) => { e.stopPropagation(); animMenu(img.index); };
@@ -653,9 +659,9 @@ function animMenu(index) {
   const menu = document.createElement('div');
   menu.className = 'menu';
   menu.innerHTML = `
-    <button data-m="shake">${ICONS.refresh}抖一抖<small>免费 · 秒出</small></button>
-    <button data-m="frames">${ICONS.play}拼帧<small>约 30 秒</small></button>
-    <button data-m="video">${ICONS.play}视频级<small>约 2 分钟</small></button>`;
+    <button data-m="shake">${ICONS.wand}抖一抖<small>免费 · 秒出</small></button>
+    <button data-m="frames">${ICONS.wand}拼帧<small>约 30 秒</small></button>
+    <button data-m="video">${ICONS.wand}视频级<small>约 2 分钟</small></button>`;
   menu.querySelectorAll('button').forEach(b => {
     b.onclick = async (e) => {
       e.stopPropagation(); menu.remove();
