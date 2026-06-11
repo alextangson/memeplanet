@@ -1,5 +1,6 @@
 # 运动达人 — 健身撸铁圈梗剧本（圈层化内容策略第一弹）
 # 顺序即叙事：从开练到永远的最后一组。前 8 个是免费层（最高 sendability 优先）。
+# 投稿规范见 packs/CONTRIBUTING.md（Stage 2a 补全）
 
 id: yundong
 name: 运动达人
@@ -106,7 +107,7 @@ memes:
     caption: 最后一组
     expression: 咬牙切齿，青筋暴起
     action: 举着杠铃硬撑，旁边计数牌写着「第8个最后一组」
-    shot: 半身
+    shot: 全身
 
   - id: shouxialai-shuai
     caption: 瘦下来还是帅的
