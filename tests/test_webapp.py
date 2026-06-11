@@ -262,6 +262,44 @@ def test_platform_pack_includes_anim_gifs(client):
     assert "动图/02.gif" not in names
 
 
+def test_admin_disabled_without_key(client, monkeypatch):
+    monkeypatch.setattr(webapp, "ADMIN_KEY", "")
+    assert client.get("/admin").status_code == 404
+    assert client.get("/api/admin/data", params={"key": "whatever"}).status_code == 404
+
+
+def test_admin_requires_correct_key(client, monkeypatch):
+    monkeypatch.setattr(webapp, "ADMIN_KEY", "s3cret")
+    assert client.get("/api/admin/data", params={"key": "wrong"}).status_code == 403
+    assert client.get("/api/admin/data").status_code == 403
+    assert client.get("/admin").status_code == 200  # 页面本身无秘密，凭 key 拉数据
+    ok = client.get("/api/admin/data", params={"key": "s3cret"})
+    assert ok.status_code == 200
+    body = ok.json()
+    assert "leads" in body and "funnel" in body and "errors" in body and "jobs" in body
+
+
+def test_admin_data_aggregates_leads_events_jobs(client, tmp_path, monkeypatch):
+    monkeypatch.setattr(webapp, "ADMIN_KEY", "k")
+    monkeypatch.setattr(webapp, "LEADS_FILE", tmp_path / "leads.jsonl")
+    monkeypatch.setattr(webapp, "EVENTS_FILE", tmp_path / "events.jsonl")
+
+    client.post("/api/leads", data={"contact": "wx123", "need": "咖啡店吉祥物"})
+    client.post("/api/events", data={"name": "unlock_shown"})
+    client.post("/api/events", data={"name": "unlock_shown"})
+    client.post("/api/events", data={"name": "unlock_free_click"})
+    client.post("/api/events", data={"name": "js_error", "detail": "boom @ x:1"})
+    job_id = _animated_job(client)  # 一个完成的任务进 jobs 统计
+
+    data = client.get("/api/admin/data", params={"key": "k"}).json()
+    assert any(l["contact"] == "wx123" for l in data["leads"])
+    assert data["funnel"]["unlock_shown"] == 2
+    assert data["funnel"]["unlock_free_click"] == 1
+    assert any("boom" in e["detail"] for e in data["errors"])
+    assert data["jobs"]["total"] >= 1
+    assert any(j["job_id"] == job_id for j in data["jobs"]["recent"])
+
+
 def test_generate_rejects_non_image(client):
     resp = client.post(
         "/api/generate",

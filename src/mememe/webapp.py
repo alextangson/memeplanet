@@ -5,6 +5,7 @@ written to disk and vanishes when the server stops.
 """
 
 import importlib.util
+import hmac
 import json
 import os
 import re
@@ -45,6 +46,7 @@ CUSTOM_PACKS_DIR = Path(os.environ.get("MEMEME_CUSTOM_PACKS_DIR", "packs/custom"
 # 晒图卡二维码落地页；部署后设 MEMEME_QR_URL=https://meme-planet.com/
 DEFAULT_QR_URL = os.environ.get("MEMEME_QR_URL", "https://github.com/alextangson/memeplanet")
 MAX_UPLOAD_BYTES = 12 * 1024 * 1024  # 单张上传上限，挡 OOM-by-upload
+ADMIN_KEY = os.environ.get("MEMEME_ADMIN_KEY", "")  # 设了才开后台；/admin?key=
 MAX_CONCURRENT_GENERATIONS = int(os.environ.get("MEMEME_MAX_CONCURRENT", "3"))
 _GEN_SLOTS = threading.Semaphore(MAX_CONCURRENT_GENERATIONS)
 
@@ -364,6 +366,52 @@ def _run_retry(
     _save_meta(job)
 
 
+def _read_jsonl(path: Path, limit: int | None = None) -> list[dict]:
+    if not path.exists():
+        return []
+    rows = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            rows.append(json.loads(line))
+        except ValueError:
+            continue
+    return rows[-limit:] if limit else rows
+
+
+def _admin_data(jobs: dict[str, "Job"]) -> dict:
+    events = _read_jsonl(EVENTS_FILE)
+    funnel: dict[str, int] = {}
+    errors = []
+    for e in events:
+        funnel[e["name"]] = funnel.get(e["name"], 0) + 1
+        if e["name"].startswith(("js_error", "js_reject")) and e.get("detail"):
+            errors.append({"detail": e["detail"], "ts": e.get("ts", 0)})
+
+    by_status: dict[str, int] = {}
+    by_pack: dict[str, int] = {}
+    recent = []
+    for job in jobs.values():
+        by_status[job.status] = by_status.get(job.status, 0) + 1
+        by_pack[job.pack_name or "?"] = by_pack.get(job.pack_name or "?", 0) + 1
+    for job in sorted(jobs.values(), key=lambda j: j.created_at, reverse=True)[:30]:
+        done = sum(1 for i in job.images if i["status"] == "done")
+        recent.append({
+            "job_id": job.id, "pack_name": job.pack_name, "status": job.status,
+            "done": done, "total": len(job.images), "created_at": job.created_at,
+            "error": job.error,
+        })
+
+    return {
+        "leads": list(reversed(_read_jsonl(LEADS_FILE))),
+        "funnel": funnel,
+        "errors": sorted(errors, key=lambda x: x["ts"], reverse=True)[:50],
+        "jobs": {"total": len(jobs), "by_status": by_status, "by_pack": by_pack, "recent": recent},
+    }
+
+
 def _job_json(job: Job) -> dict:
     with job.lock:
         return {
@@ -430,6 +478,20 @@ def create_app() -> FastAPI:
         with EVENTS_FILE.open("a", encoding="utf-8") as f:
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
         return {"ok": True}
+
+    @app.get("/admin", response_class=HTMLResponse)
+    def admin_page() -> HTMLResponse:
+        if not ADMIN_KEY:
+            raise HTTPException(404, "not found")
+        return HTMLResponse(_ADMIN_HTML, headers={"Cache-Control": "no-cache"})
+
+    @app.get("/api/admin/data")
+    def admin_data(key: str = "") -> dict:
+        if not ADMIN_KEY:
+            raise HTTPException(404, "not found")
+        if not hmac.compare_digest(key, ADMIN_KEY):
+            raise HTTPException(403, "forbidden")
+        return _admin_data(jobs)
 
     @app.get("/api/packs")
     def list_packs() -> list[dict]:
@@ -785,3 +847,4 @@ def create_app() -> FastAPI:
 
 _INDEX_HTML = (Path(__file__).parent / "page.html").read_text(encoding="utf-8")
 _CUSTOM_HTML = (Path(__file__).parent / "custom.html").read_text(encoding="utf-8")
+_ADMIN_HTML = (Path(__file__).parent / "admin.html").read_text(encoding="utf-8")

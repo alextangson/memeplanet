@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>表情星球 · 后台</title>
+<style>
+  :root { --ink:#1A1505; --ink-2:#5a5340; --accent:#F0531E; --yellow:#FFD23D; --line:#ece6d6; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.6 -apple-system,system-ui,"PingFang SC",sans-serif; color:var(--ink); background:#fbf7ec; padding:16px; }
+  h1 { font-size:18px; margin:0 0 4px; }
+  .sub { color:var(--ink-2); font-size:12px; margin-bottom:16px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; margin-bottom:18px; }
+  .stat { background:#fff; border:2px solid var(--ink); border-radius:12px; padding:12px; }
+  .stat b { display:block; font-size:24px; }
+  .stat span { color:var(--ink-2); font-size:12px; }
+  .stat .accent { color:var(--accent); }
+  section { background:#fff; border:1.5px solid var(--line); border-radius:12px; padding:14px; margin-bottom:14px; }
+  h2 { font-size:14px; margin:0 0 10px; }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  th,td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--ink-2); font-weight:600; }
+  .pill { display:inline-block; padding:1px 8px; border-radius:99px; font-size:11px; font-weight:600; }
+  .done { background:#e6f7ea; color:#1a8a3d; } .error { background:#fde8e8; color:#c0392b; } .running { background:#fff3d6; color:#a8780a; }
+  .err-detail { font-family:ui-monospace,Menlo,monospace; font-size:11.5px; color:#c0392b; word-break:break-all; }
+  .muted { color:var(--ink-3,#9a917a); }
+  .gate { max-width:320px; margin:60px auto; text-align:center; }
+  .gate input { width:100%; padding:10px 12px; border:2px solid var(--line); border-radius:10px; font-size:14px; margin:10px 0; }
+  .gate button { background:var(--accent); color:#fff; border:0; border-radius:10px; padding:10px 20px; font-weight:700; cursor:pointer; }
+  .bar { height:8px; background:var(--line); border-radius:99px; overflow:hidden; margin-top:4px; }
+  .bar i { display:block; height:100%; background:var(--accent); }
+</style>
+</head>
+<body>
+<div id="gate" class="gate" style="display:none">
+  <h1>后台</h1>
+  <p class="sub">输入访问口令</p>
+  <input id="keyInput" type="password" placeholder="MEMEME_ADMIN_KEY" autocomplete="off">
+  <button id="enterBtn">进入</button>
+  <p id="gateErr" class="err-detail" style="display:none">口令不对</p>
+</div>
+
+<div id="dash" style="display:none">
+  <h1>表情星球 · 后台</h1>
+  <p class="sub" id="updated"></p>
+  <div class="cards" id="cards"></div>
+
+  <section>
+    <h2>转化漏斗</h2>
+    <div id="funnel"></div>
+  </section>
+
+  <section>
+    <h2>B 端定制线索</h2>
+    <table><thead><tr><th>联系方式</th><th>需求</th><th>时间</th></tr></thead><tbody id="leads"></tbody></table>
+  </section>
+
+  <section>
+    <h2>最近任务</h2>
+    <table><thead><tr><th>剧本</th><th>状态</th><th>完成</th><th>时间</th><th>错误</th></tr></thead><tbody id="jobs"></tbody></table>
+  </section>
+
+  <section>
+    <h2>前端报错（抓机型 bug 用）</h2>
+    <table><thead><tr><th>时间</th><th>detail</th></tr></thead><tbody id="errors"></tbody></table>
+  </section>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = (ts) => ts ? new Date(ts * 1000).toLocaleString('zh-CN', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+const esc = (s) => String(s ?? '').replace(/[&<>]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;' }[c]));
+
+function getKey() {
+  return new URLSearchParams(location.search).get('key') || sessionStorage.getItem('admin_key') || '';
+}
+
+async function load() {
+  const key = getKey();
+  if (!key) { $('gate').style.display = 'block'; return; }
+  const resp = await fetch('/api/admin/data?key=' + encodeURIComponent(key));
+  if (resp.status === 403) { sessionStorage.removeItem('admin_key'); $('gate').style.display = 'block'; $('gateErr').style.display = 'block'; return; }
+  if (!resp.ok) { document.body.innerHTML = '<p>加载失败</p>'; return; }
+  sessionStorage.setItem('admin_key', key);
+  if (location.search) history.replaceState(null, '', '/admin');  // 别把 key 留在地址栏
+  render(await resp.json());
+}
+
+function render(d) {
+  $('gate').style.display = 'none';
+  $('dash').style.display = 'block';
+  $('updated').textContent = '更新于 ' + new Date().toLocaleString('zh-CN');
+
+  const shown = d.funnel.unlock_shown || 0, clicked = d.funnel.unlock_free_click || 0;
+  const rate = shown ? Math.round(clicked / shown * 100) : 0;
+  $('cards').innerHTML = `
+    <div class="stat"><b>${d.jobs.total}</b><span>总任务</span></div>
+    <div class="stat"><b class="accent">${d.jobs.by_status.done || 0}</b><span>完成</span></div>
+    <div class="stat"><b>${d.jobs.by_status.error || 0}</b><span>失败</span></div>
+    <div class="stat"><b>${d.leads.length}</b><span>B端线索</span></div>
+    <div class="stat"><b class="accent">${rate}%</b><span>解锁意愿 (${clicked}/${shown})</span></div>`;
+
+  const packs = Object.entries(d.jobs.by_pack).sort((a, b) => b[1] - a[1]);
+  const max = packs.length ? packs[0][1] : 1;
+  $('funnel').innerHTML = packs.map(([n, c]) =>
+    `<div style="margin-bottom:6px">${esc(n)} · ${c}<div class="bar"><i style="width:${c / max * 100}%"></i></div></div>`).join('') || '<span class="muted">暂无</span>';
+
+  $('leads').innerHTML = d.leads.map(l =>
+    `<tr><td>${esc(l.contact)}</td><td>${esc(l.need)}</td><td>${fmt(l.ts)}</td></tr>`).join('') || '<tr><td colspan="3" class="muted">还没有线索</td></tr>';
+
+  $('jobs').innerHTML = d.jobs.recent.map(j =>
+    `<tr><td>${esc(j.pack_name)}</td><td><span class="pill ${j.status}">${esc(j.status)}</span></td><td>${j.done}/${j.total}</td><td>${fmt(j.created_at)}</td><td class="err-detail">${esc(j.error || '')}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">暂无</td></tr>';
+
+  $('errors').innerHTML = d.errors.map(e =>
+    `<tr><td>${fmt(e.ts)}</td><td class="err-detail">${esc(e.detail)}</td></tr>`).join('') || '<tr><td colspan="2" class="muted">没有报错，很好</td></tr>';
+}
+
+$('enterBtn').onclick = () => { sessionStorage.setItem('admin_key', $('keyInput').value.trim()); load(); };
+$('keyInput').addEventListener('keydown', e => { if (e.key === 'Enter') $('enterBtn').click(); });
+load();
+</script>
+</body>
+</html>
