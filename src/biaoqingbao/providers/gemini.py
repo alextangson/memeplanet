@@ -27,7 +27,14 @@ class GeminiProvider:
     def __init__(self, model: str | None = None):
         from google import genai
 
-        self._client = genai.Client()  # reads GEMINI_API_KEY / GOOGLE_API_KEY
+        kwargs: dict[str, Any] = {}
+        base_url = os.environ.get("BIAOQINGBAO_GEMINI_BASE_URL")
+        if base_url:
+            from google.genai import types
+
+            kwargs["http_options"] = types.HttpOptions(base_url=base_url)
+        # api key read from GEMINI_API_KEY / GOOGLE_API_KEY env
+        self._client = genai.Client(**kwargs)
         self._model = model or os.environ.get(
             "BIAOQINGBAO_GEMINI_MODEL", DEFAULT_MODEL
         )

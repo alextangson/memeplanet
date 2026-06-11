@@ -30,3 +30,37 @@ def test_no_image_raises_with_model_text():
 def test_empty_candidates_raises():
     with pytest.raises(RuntimeError):
         extract_image_bytes(SimpleNamespace(candidates=[]))
+
+
+def test_provider_uses_custom_base_url_from_env(monkeypatch):
+    captured = {}
+
+    class FakeClient:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+    import google.genai
+
+    monkeypatch.setattr(google.genai, "Client", FakeClient)
+    monkeypatch.setenv("BIAOQINGBAO_GEMINI_BASE_URL", "https://relay.example/gemini")
+    from biaoqingbao.providers.gemini import GeminiProvider
+
+    GeminiProvider()
+    assert captured["http_options"].base_url == "https://relay.example/gemini"
+
+
+def test_provider_default_has_no_base_url_override(monkeypatch):
+    captured = {}
+
+    class FakeClient:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+    import google.genai
+
+    monkeypatch.setattr(google.genai, "Client", FakeClient)
+    monkeypatch.delenv("BIAOQINGBAO_GEMINI_BASE_URL", raising=False)
+    from biaoqingbao.providers.gemini import GeminiProvider
+
+    GeminiProvider()
+    assert "http_options" not in captured
