@@ -302,6 +302,31 @@ def _run_animate(
     _save_meta(job)
 
 
+def _run_extend(job: Job, provider: ImageProvider) -> None:
+    try:
+        for pos in range(8, len(job.pack.memes)):
+            index = pos + 1
+            meme = job.pack.memes[pos]
+            with job.lock:
+                job.images[pos]["status"] = "running"
+            raw = provider.generate(
+                compile_meme(
+                    job.pack, meme, style=job.style, caption_style=job.caption_style
+                ),
+                job.selfie,
+            )
+            _write_one(job, index, raw)
+            with job.lock:
+                job.images[pos]["status"] = "done"
+                job.images[pos]["url"] = f"/files/{job.id}/{_sticker_stem(job, index)}.png"
+                job.images[pos]["gif_url"] = f"/files/{job.id}/{_sticker_stem(job, index)}.gif"
+        job.status = "done"
+    except Exception as e:
+        job.status = "error"
+        job.error = str(e)
+    _save_meta(job)
+
+
 def _run_retry(
     job: Job, provider: ImageProvider, index: int, caption: str | None = None
 ) -> None:
@@ -622,6 +647,35 @@ def create_app() -> FastAPI:
             headers={"X-Lan-Url": url},
         )
 
+    @app.post("/api/jobs/{job_id}/extend")
+    def extend(job_id: str) -> dict:
+        job = jobs.get(job_id)
+        if job is None:
+            raise HTTPException(404, "job not found")
+        if not job.selfie or job.pack is None:
+            raise HTTPException(409, "原始照片已按隐私策略删除，重新生成一套即可直接选全套")
+        if job.status == "running":
+            raise HTTPException(409, "job still running")
+        if job.full or len(job.images) >= len(job.pack.memes):
+            raise HTTPException(409, "已经是全套了")
+        with job.lock:
+            job.full = True
+            job.status = "running"
+            for i, m in enumerate(job.pack.memes[8:], start=9):
+                job.images.append(
+                    {
+                        "index": i, "id": m.id, "caption": m.caption,
+                        "status": "pending", "url": "", "gif_url": "",
+                        "anim_status": "none", "anim_url": "",
+                    }
+                )
+        threading.Thread(
+            target=_run_extend,
+            args=(job, _make_provider(job.provider_name)),
+            daemon=True,
+        ).start()
+        return {"job_id": job_id}
+
     @app.get("/api/jobs/{job_id}/platform-pack")
     def platform_pack(job_id: str) -> Response:
         from mememe.core.platform import build_platform_zip
@@ -658,483 +712,4 @@ def create_app() -> FastAPI:
     return app
 
 
-_INDEX_HTML = """<!DOCTYPE html>
-<html lang="zh">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>表情包工厂 · mememe</title>
-<style>
-  * { box-sizing: border-box; font-family: -apple-system, "PingFang SC", sans-serif; margin: 0; }
-  body { background: #faf8f5; color: #1d1d1f; }
-  .wrap { max-width: 600px; margin: 0 auto; padding: 0 16px 80px; }
-  .hero { text-align: center; padding: 40px 16px 28px;
-          background: linear-gradient(160deg, #fff7ed 0%, #ffe8d6 55%, #ffd9c0 100%);
-          border-radius: 0 0 28px 28px; margin: 0 -16px 20px; }
-  .hero h1 { font-size: 32px; letter-spacing: 1px; }
-  .hero .tag { color: #8a6a52; font-size: 15px; margin-top: 8px; }
-  .steps { display: flex; justify-content: center; gap: 18px; margin-top: 18px;
-           font-size: 13px; color: #a07; color: #9a7b62; }
-  .steps span { background: #ffffffaa; border-radius: 999px; padding: 6px 14px; }
-  .card { background: #fff; border: 1px solid #eee4da; border-radius: 16px;
-          padding: 18px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(60,40,20,.04); }
-  .label { font-size: 13px; color: #b09880; font-weight: 600; margin-bottom: 10px; letter-spacing: .5px; }
-  .drop { border: 2px dashed #dcc9b6; border-radius: 14px; padding: 26px; text-align: center;
-          cursor: pointer; color: #8a6a52; transition: .15s; }
-  .drop:hover { border-color: #c97b4a; }
-  .drop.has { border-style: solid; border-color: #2a9d5c; color: #2a9d5c; }
-  .drop img { max-height: 110px; border-radius: 10px; display: block; margin: 0 auto 10px; }
-  .privacy { font-size: 12px; color: #bbb; text-align: center; margin-top: 8px; }
-  .chatbox { max-height: 260px; overflow-y: auto; display: flex; flex-direction: column;
-             gap: 8px; padding: 4px 2px; }
-  .bub { max-width: 85%; padding: 9px 12px; border-radius: 14px; font-size: 14px;
-         line-height: 1.6; white-space: pre-wrap; }
-  .bub.ai { background: #f6f2ec; color: #3d3326; align-self: flex-start;
-            border-bottom-left-radius: 4px; }
-  .bub.me { background: #c9551e; color: #fff; align-self: flex-end;
-            border-bottom-right-radius: 4px; }
-  .bub.busy { color: #b3a392; animation: blink 1.2s ease infinite; }
-  .abtn { border: 1.5px solid #e0d5c8; background: #fff; border-radius: 10px;
-          padding: 10px 14px; font-size: 14px; cursor: pointer; white-space: nowrap; }
-  .abtn.primary { background: #c9551e; border-color: #c9551e; color: #fff; font-weight: 600; }
-  .abtn:disabled { opacity: .5; cursor: not-allowed; }
-  .cbadge { font-size: 10px; font-weight: 700; background: #2a9d5c; color: #fff;
-            border-radius: 6px; padding: 2px 6px; margin-left: 6px; }
-  .hist { cursor: grab; user-select: none; -webkit-user-select: none; }
-  .hist:active { cursor: grabbing; }
-  .hist img { -webkit-user-drag: none; }
-  .packsearch { width: 100%; border: 1.5px solid #e5d8ca; border-radius: 10px;
-                padding: 10px 12px; font-size: 14px; margin-bottom: 12px;
-                background: #fffdfa; outline: none; }
-  .packsearch:focus { border-color: #c97b4a; }
-  .packgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-  @media (max-width: 560px) { .packgrid { grid-template-columns: repeat(2, 1fr); } }
-  .pcard { border: 2px solid #eee0d2; border-radius: 14px; padding: 10px;
-           cursor: pointer; transition: .15s; background: #fffdfa; }
-  .pcard:hover { border-color: #c97b4a; }
-  .pcard.sel { border-color: #c9551e; background: #fff3ea; }
-  .pcard img { width: 100%; aspect-ratio: 1; object-fit: contain;
-               border-radius: 10px; background: #f6f2ec; }
-  .pph { width: 100%; aspect-ratio: 1; border-radius: 10px; background: #f6f2ec;
-         display: flex; flex-direction: column; align-items: center; justify-content: center;
-         font-size: 40px; gap: 6px; }
-  .pph small { font-size: 11px; color: #b3a392; }
-  .pname { font-size: 14px; font-weight: 700; margin-top: 8px;
-           display: flex; justify-content: space-between; align-items: baseline; }
-  .pcount { font-size: 10px; color: #b3a392; font-weight: 400; white-space: nowrap; }
-  .pdesc { font-size: 11px; color: #a89b8d; margin-top: 3px; line-height: 1.5; }
-  .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
-  .chips span { font-size: 10px; background: #f3e9de; color: #8a6a52;
-                border-radius: 6px; padding: 2px 6px; }
-  .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-  select { border: 1px solid #ddd; border-radius: 8px; padding: 6px 8px; font-size: 13px; background:#fff; }
-  button.go { flex: 1; min-width: 200px; background: linear-gradient(135deg,#e2622b,#c9551e);
-              color: #fff; border: 0; border-radius: 999px; padding: 15px;
-              font-size: 16px; font-weight: 700; cursor: pointer; }
-  button.go:disabled { background: #d9cdc2; cursor: not-allowed; }
-  .toggle { font-size: 13px; color: #6f5d4d; white-space: nowrap; }
-  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-  @media (max-width: 430px) { .grid { grid-template-columns: repeat(3, 1fr); } }
-  .cell { aspect-ratio: 1; border: 1px solid #efe5da; border-radius: 12px; position: relative;
-          display: flex; align-items: center; justify-content: center; overflow: hidden; background: #f6f2ec; }
-  .cell img { width: 100%; height: 100%; object-fit: contain; animation: pop .3s ease; }
-  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-  .cap { position: absolute; bottom: 5px; left: 0; right: 0; text-align: center;
-         font-size: 11px; color: #b3a392; pointer-events: none; }
-  .spin { width: 22px; height: 22px; border: 3px solid #e8ddd0; border-top-color: #c9551e;
-          border-radius: 50%; animation: r 1s linear infinite; }
-  @keyframes r { to { transform: rotate(360deg); } }
-  .act { position: absolute; top: 4px; font-size: 12px; background: #fffffff0; border: 1px solid #e5d8ca;
-         border-radius: 8px; padding: 3px 7px; cursor: pointer; line-height: 1; }
-  .act.redo { left: 4px; }
-  .act.anim { right: 4px; }
-  .badge { position: absolute; top: 4px; right: 4px; font-size: 10px; font-weight: 700;
-           background: #c9551e; color: #fff; border-radius: 6px; padding: 3px 6px; pointer-events:none; }
-  .badge.busy { background: #8a6a52; animation: blink 1.2s ease infinite; }
-  @keyframes blink { 50% { opacity: .45; } }
-  .menu { position: absolute; inset: auto 4px 4px 4px; background: #fffffffa;
-          border: 1px solid #e5d8ca; border-radius: 10px; z-index: 5;
-          display: flex; flex-direction: column; overflow: hidden; }
-  .menu button { border: 0; background: none; padding: 7px 8px; font-size: 11px;
-                 cursor: pointer; text-align: left; white-space: nowrap; }
-  .menu button:hover { background: #fff3ea; }
-  .menu button + button { border-top: 1px solid #f3e9de; }
-  .collage img { width: 100%; border-radius: 14px; border: 1px solid #eee4da; }
-  .hint { font-size: 13px; color: #998a7a; line-height: 1.8; margin-top: 10px; }
-  .err { color: #c0392b; font-size: 13px; white-space: pre-wrap; margin-top: 8px; }
-  .hist { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
-  .hitem { min-width: 116px; max-width: 116px; cursor: pointer; text-align: center;
-           font-size: 12px; color: #6f5d4d; }
-  .hitem img { width: 116px; height: 116px; object-fit: cover; border-radius: 10px;
-               border: 1px solid #eee4da; background: #f6f2ec; }
-  .hitem small { display: block; color: #b3a392; font-size: 10px; margin-top: 2px; }
-  .qrbox { display: none; text-align: center; }
-  .qrbox img { width: 132px; height: 132px; }
-  @media (min-width: 700px) { .qrbox.lan { display: block; } }
-  footer { text-align: center; color: #c7b9aa; font-size: 12px; margin-top: 28px; }
-</style>
-</head>
-<body>
-<div class="wrap">
-  <div class="hero">
-    <h1>表情包工厂</h1>
-    <div class="tag">一张自拍，变成一整套微信表情包</div>
-    <div class="steps"><span>① 上传自拍</span><span>② 选梗剧本</span><span>③ 逐张揭晓</span></div>
-  </div>
-
-  <div class="card">
-    <div class="label">1 · 上传照片：自拍 / 主子萌照 / 你俩的合照</div>
-    <div class="drop" id="drop" onclick="document.getElementById('file').click()">📷 点击选择照片（人或宠物都行）</div>
-    <input type="file" id="file" accept="image/*" hidden>
-    <div class="privacy">照片只存在内存里，服务停止即消失</div>
-  </div>
-
-  <div class="card">
-    <div class="label">2 · 选梗剧本</div>
-    <input class="packsearch" id="psearch" type="search"
-           placeholder="🔍 搜剧本或梗：摸鱼 / 阴阳 / 亲亲 / 求过……">
-    <div class="packgrid" id="packs"></div>
-  </div>
-
-  <div class="card">
-    <div class="label">2.5 · 没有合适的？和 AI 策划聊一套专属的（个人 / 情侣 / 品牌 IP 都行）</div>
-    <div class="chatbox" id="chatbox">
-      <div class="bub ai">嗨！想定制什么样的表情包？说说给谁用、什么场合～</div>
-    </div>
-    <div class="row" style="margin-top:10px">
-      <input class="packsearch" id="agentInput" style="margin:0;flex:1"
-             placeholder="比如：给我和对象的互怼表情包，她总说我直男…">
-      <button class="abtn" id="agentSend">发送</button>
-      <button class="abtn primary" id="agentDraft">✨生成剧本</button>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="label">3 · 生成</div>
-    <div class="row" style="margin-bottom:12px">
-      <label class="toggle">模型
-        <select id="prov">
-          <option value="gemini">Gemini（中转）</option>
-          <option value="seedream">即梦 Seedream</option>
-        </select>
-      </label>
-      <label class="toggle"><input type="checkbox" id="full"> 全套16张</label>
-    </div>
-    <div class="row"><button class="go" id="go" disabled>生成我的表情包</button></div>
-    <div class="err" id="err"></div>
-  </div>
-
-  <div class="card" id="resultCard" style="display:none">
-    <div class="label">4 · 逐张揭晓</div>
-    <div class="grid" id="grid"></div>
-    <div class="hint">🔄 重摇换一张（可改文案）｜✨ 让它动起来（约 1-2 分钟）<br>
-    手机上：长按图片保存 → 微信里发给自己 → 长按「添加到表情」</div>
-  </div>
-
-  <div class="card collage" id="collageCard" style="display:none">
-    <div class="label">5 · 合集晒图卡（发朋友圈用这张）</div>
-    <img id="collageImg">
-  </div>
-
-  <div class="card" id="histCard" style="display:none">
-    <div class="label">历史生成（点击查看）</div>
-    <div class="hist" id="hist"></div>
-  </div>
-
-  <div class="card qrbox" id="qrbox">
-    <div class="label">📱 手机扫码打开本页，长按直接保存</div>
-    <img src="/api/lan-qr" onload="this.parentElement.classList.add('lan')" onerror="this.parentElement.style.display='none'">
-  </div>
-
-  <footer>mememe · 本地运行 · Apache-2.0</footer>
-</div>
-
-<script>
-let selfie = null, packId = null, jobId = null, timer = null;
-const $ = (id) => document.getElementById(id);
-
-let allPacks = [];
-
-function renderPacks(filter) {
-  const box = $('packs');
-  const kw = (filter || '').trim().toLowerCase();
-  const shown = allPacks.filter(p => !kw
-    || p.name.toLowerCase().includes(kw)
-    || (p.description || '').toLowerCase().includes(kw)
-    || p.captions.some(c => c.toLowerCase().includes(kw)));
-  if (!shown.find(p => p.id === packId)) packId = shown.length ? shown[0].id : null;
-  box.innerHTML = '';
-  if (!shown.length) {
-    box.innerHTML = '<div class="hint">没有匹配的剧本——欢迎去 GitHub 投稿一套 🙌</div>';
-    return;
-  }
-  shown.forEach(p => {
-    const div = document.createElement('div');
-    div.className = 'pcard' + (p.id === packId ? ' sel' : '');
-    const chips = p.captions.slice(0, 3).map(c => `<span>${c}</span>`).join('')
-      + `<span>+${p.meme_count - 3}</span>`;
-    div.innerHTML = `${p.preview_url ? `<img src="${p.preview_url}" loading="lazy">` : '<div class="pph">🎭<small>预览生成中…</small></div>'}
-      <div class="pname">${p.name}${p.custom ? '<span class="cbadge">定制</span>' : ''}<span class="pcount">${p.meme_count}梗</span></div>
-      <div class="pdesc">${p.description || ''}</div>
-      <div class="chips">${chips}</div>`;
-    div.onclick = () => { packId = p.id; renderPacks($('psearch').value); };
-    box.appendChild(div);
-  });
-}
-
-function refreshPacks(selectId) {
-  return fetch('/api/packs').then(r => r.json()).then(packs => {
-    allPacks = packs;
-    if (selectId) packId = selectId;
-    renderPacks($('psearch') ? $('psearch').value : '');
-  });
-}
-
-refreshPacks();
-$('psearch').oninput = (e) => renderPacks(e.target.value);
-
-// ---- 对话定制 agent ----
-let agentDraftId = '';
-
-function bubble(text, cls) {
-  const box = $('chatbox');
-  const div = document.createElement('div');
-  div.className = 'bub ' + cls;
-  div.textContent = text;
-  box.appendChild(div);
-  box.scrollTop = box.scrollHeight;
-  return div;
-}
-
-async function agentSend() {
-  const text = $('agentInput').value.trim();
-  if (!text) return;
-  $('agentInput').value = '';
-  bubble(text, 'me');
-  const busy = bubble('策划思考中…', 'ai busy');
-  $('agentSend').disabled = true;
-  const fd = new FormData();
-  fd.append('message', text);
-  if (agentDraftId) fd.append('draft_id', agentDraftId);
-  try {
-    const resp = await fetch('/api/agent/chat', { method: 'POST', body: fd });
-    const data = await resp.json();
-    if (!resp.ok) throw new Error(data.detail || resp.status);
-    agentDraftId = data.draft_id;
-    busy.className = 'bub ai';
-    busy.textContent = data.reply;
-  } catch (e) {
-    busy.className = 'bub ai';
-    busy.textContent = '出错了：' + e.message;
-  }
-  $('agentSend').disabled = false;
-}
-
-async function agentMakeDraft() {
-  if (!agentDraftId) { bubble('先说说你的需求，聊一两句我才好出方案～', 'ai'); return; }
-  const busy = bubble('正在写剧本（约 20 秒）…', 'ai busy');
-  $('agentDraft').disabled = true;
-  const fd = new FormData();
-  fd.append('draft_id', agentDraftId);
-  try {
-    const resp = await fetch('/api/agent/draft', { method: 'POST', body: fd });
-    const data = await resp.json();
-    if (!resp.ok) throw new Error(data.detail || resp.status);
-    busy.className = 'bub ai';
-    busy.textContent = `「${data.name}」写好了！前 8 个梗：${data.captions.join('、')}。已加入上面的剧本列表（带「定制」角标），不满意继续跟我聊，再点生成会出新版本。`;
-    await refreshPacks(data.pack_id);
-    window.scrollTo({ top: $('packs').offsetTop - 80, behavior: 'smooth' });
-    setTimeout(() => refreshPacks(packId), 25000);  // 等风格预览图生成完
-  } catch (e) {
-    busy.className = 'bub ai';
-    busy.textContent = '生成失败：' + e.message;
-  }
-  $('agentDraft').disabled = false;
-}
-
-$('agentSend').onclick = agentSend;
-$('agentDraft').onclick = agentMakeDraft;
-$('agentInput').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); agentSend(); }
-});
-
-$('file').onchange = (e) => {
-  selfie = e.target.files[0];
-  if (!selfie) return;
-  const drop = $('drop');
-  drop.classList.add('has');
-  drop.innerHTML = `<img src="${URL.createObjectURL(selfie)}">已选择，点击可更换`;
-  $('go').disabled = false;
-};
-
-$('go').onclick = async () => {
-  $('go').disabled = true; $('err').textContent = '';
-  const fd = new FormData();
-  fd.append('selfie', selfie);
-  fd.append('pack_id', packId);
-  fd.append('full', $('full').checked);
-  fd.append('provider', $('prov').value);
-  const resp = await fetch('/api/generate', { method: 'POST', body: fd });
-  if (!resp.ok) { $('err').textContent = await resp.text(); $('go').disabled = false; return; }
-  jobId = (await resp.json()).job_id;
-  $('resultCard').style.display = 'block';
-  $('collageCard').style.display = 'none';
-  $('grid').innerHTML = '';
-  startPoll();
-};
-
-function startPoll() { if (timer) clearInterval(timer); timer = setInterval(poll, 1000); }
-
-async function poll() {
-  const resp = await fetch(`/api/jobs/${jobId}`);
-  if (!resp.ok) return;
-  const job = await resp.json();
-  render(job);
-  const busy = job.status === 'running' || job.images.some(i => i.anim_status === 'running');
-  if (!busy) {
-    if (timer) { clearInterval(timer); timer = null; loadHistory(); }
-    $('go').disabled = false;
-    if (job.error) $('err').textContent = job.error;
-  }
-  if (job.collage_url) { $('collageImg').src = job.collage_url + '?t=' + (job.status==='running'?0:Date.now()); $('collageCard').style.display = 'block'; }
-}
-
-function cellState(img) { return img.status + ':' + img.anim_status; }
-
-function render(job) {
-  const grid = $('grid');
-  if (grid.children.length !== job.images.length) {
-    grid.innerHTML = '';
-    job.images.forEach(img => {
-      const cell = document.createElement('div');
-      cell.className = 'cell'; cell.id = 'cell-' + img.index;
-      grid.appendChild(cell);
-    });
-  }
-  job.images.forEach(img => {
-    const cell = $('cell-' + img.index);
-    const state = cellState(img);
-    if (cell.dataset.state === state) return;
-    cell.dataset.state = state;
-    if (img.status === 'pending') {
-      cell.innerHTML = `<div class="cap">${img.caption}</div>`;
-    } else if (img.status === 'running') {
-      cell.innerHTML = `<div class="spin"></div><div class="cap">${img.caption}</div>`;
-    } else if (img.status === 'error') {
-      cell.innerHTML = `<div class="cap">失败</div><div class="act redo">🔄</div>`;
-      cell.querySelector('.redo').onclick = () => retry(img.index);
-    } else if (img.anim_status === 'done') {
-      cell.innerHTML = `<img src="${img.anim_url}?t=${Date.now()}"><div class="badge">GIF</div>
-        <div class="act anim" style="top:auto;bottom:4px" title="换一种动法">✨</div>`;
-      cell.querySelector('.anim').onclick = (e) => { e.stopPropagation(); animMenu(img.index); };
-    } else if (img.anim_status === 'running') {
-      cell.innerHTML = `<img src="${img.url}"><div class="badge busy">🎬 动图中</div>`;
-    } else {
-      const animBtn = img.anim_status === 'error' ? '✨重试' : '✨';
-      cell.innerHTML = `<img src="${img.url}?t=${Date.now()}">
-        <div class="act redo" title="重摇">🔄</div>
-        <div class="act anim" title="动起来">${animBtn}</div>`;
-      cell.querySelector('.redo').onclick = (e) => { e.stopPropagation(); retry(img.index); };
-      cell.querySelector('.anim').onclick = (e) => { e.stopPropagation(); animMenu(img.index); };
-    }
-  });
-}
-
-async function retry(index) {
-  const text = prompt('想换的文案？留空保持原文案（也可以只重摇不改字）', '');
-  if (text === null) return;
-  const cell = $('cell-' + index);
-  cell.dataset.state = ''; cell.innerHTML = '<div class="spin"></div>';
-  const fd = new FormData();
-  if (text.trim()) fd.append('caption', text.trim());
-  await fetch(`/api/jobs/${jobId}/retry/${index}`, { method: 'POST', body: fd });
-  startPoll();
-}
-
-function animMenu(index) {
-  const cell = $('cell-' + index);
-  const old = cell.querySelector('.menu');
-  if (old) { old.remove(); return; }
-  const menu = document.createElement('div');
-  menu.className = 'menu';
-  menu.innerHTML = `
-    <button data-m="shake">⚡ 抖一抖 · 免费秒出</button>
-    <button data-m="frames">🎞 拼帧 · 几分钱 ~30s</button>
-    <button data-m="video">🎬 视频 · 最贵 ~2分钟</button>`;
-  menu.querySelectorAll('button').forEach(b => {
-    b.onclick = (e) => {
-      e.stopPropagation(); menu.remove();
-      let motion = '';
-      if (b.dataset.m === 'frames' || b.dataset.m === 'video') {
-        const t = prompt('想要什么动作？一句话描述，留空用默认。比如：举着咖啡杯慢动作干杯 / 揉眼睛打哈欠', '');
-        if (t === null) return;
-        motion = t.trim();
-      }
-      animate(index, b.dataset.m, motion);
-    };
-  });
-  cell.appendChild(menu);
-  setTimeout(() => document.addEventListener('click', () => menu.remove(), { once: true }), 0);
-}
-
-async function animate(index, mode, motion) {
-  const fd = new FormData();
-  fd.append('mode', mode);
-  if (motion) fd.append('motion', motion);
-  const resp = await fetch(`/api/jobs/${jobId}/animate/${index}`, { method: 'POST', body: fd });
-  if (!resp.ok) { $('err').textContent = await resp.text(); return; }
-  startPoll();
-}
-
-async function loadHistory() {
-  const items = await (await fetch('/api/history')).json();
-  if (!items.length) return;
-  $('histCard').style.display = 'block';
-  const box = $('hist');
-  box.innerHTML = '';
-  items.forEach(it => {
-    const div = document.createElement('div');
-    div.className = 'hitem';
-    const when = it.created_at ? new Date(it.created_at * 1000).toLocaleString('zh-CN', {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
-    div.innerHTML = `<img src="${it.thumb || ''}">${it.pack_name}<small>${when} · ${it.done}/${it.total}张</small>`;
-    div.onclick = () => openJob(it.job_id);
-    box.appendChild(div);
-  });
-}
-
-function openJob(id) {
-  jobId = id;
-  $('resultCard').style.display = 'block';
-  $('collageCard').style.display = 'none';
-  $('grid').innerHTML = '';
-  $('err').textContent = '';
-  startPoll();
-  window.scrollTo({ top: $('resultCard').offsetTop - 12, behavior: 'smooth' });
-}
-
-function makeDraggable(el) {
-  let down = false, startX = 0, startLeft = 0, moved = false;
-  el.addEventListener('pointerdown', (e) => {
-    down = true; moved = false; startX = e.clientX; startLeft = el.scrollLeft;
-    el.setPointerCapture(e.pointerId);
-  });
-  el.addEventListener('pointermove', (e) => {
-    if (!down) return;
-    const dx = e.clientX - startX;
-    if (Math.abs(dx) > 5) { moved = true; el.scrollLeft = startLeft - dx; }
-  });
-  ['pointerup', 'pointercancel'].forEach(ev => el.addEventListener(ev, () => { down = false; }));
-  el.addEventListener('click', (e) => {
-    if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; }
-  }, true);
-  el.addEventListener('wheel', (e) => {
-    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { el.scrollLeft += e.deltaY; e.preventDefault(); }
-  }, { passive: false });
-}
-makeDraggable($('hist'));
-
-loadHistory();
-</script>
-</body>
-</html>
-"""
+_INDEX_HTML = (Path(__file__).parent / "page.html").read_text(encoding="utf-8")

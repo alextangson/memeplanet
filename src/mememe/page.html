@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>把照片变成微信表情包｜meme-me 表情包工厂</title>
+<meta name="description" content="上传一张自拍、宠物照或合照，AI 生成一整套人设一致的微信表情包：16 个梗、静态加动图、直接满足微信导入规格。开源免费，照片不落盘。">
+<meta property="og:title" content="meme-me 表情包工厂：一张照片，一整套微信表情包">
+<meta property="og:description" content="16 个梗共享同一个你，静态 + 动图，支持宠物与情侣合照，AI 策划对话定制专属剧本。">
+<meta property="og:type" content="website">
+<meta property="og:image" content="/api/pack-preview/shechu">
+<meta name="theme-color" content="#FAF7F2">
+<style>
+  :root {
+    --bg: #FAF7F2; --card: #FFFFFF; --ink: #211A12; --ink-2: #6E5F4E;
+    --ink-3: #A99882; --line: #ECE3D6; --accent: #C9551E; --accent-h: #B34715;
+    --ok: #2A9D5C; --r: 14px; --shadow: 0 1px 2px rgba(60,40,20,.05), 0 4px 16px rgba(60,40,20,.04);
+  }
+  * { box-sizing: border-box; margin: 0; font-family: -apple-system, "PingFang SC", "Noto Sans SC", sans-serif; }
+  body { background: var(--bg); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 72px; }
+
+  header.site { display: flex; align-items: baseline; justify-content: space-between; padding: 18px 2px 0; }
+  .brand { font-size: 17px; font-weight: 800; letter-spacing: .5px; }
+  .brand em { font-style: normal; color: var(--accent); }
+  header.site a { font-size: 13px; color: var(--ink-3); text-decoration: none; }
+  header.site a:hover { color: var(--accent); }
+
+  .hero { text-align: center; padding: 40px 8px 30px; }
+  .hero h1 { font-size: 30px; line-height: 1.3; letter-spacing: .5px; }
+  .hero h1 em { font-style: normal; color: var(--accent); }
+  .hero .sub { color: var(--ink-2); font-size: 15px; margin-top: 10px; line-height: 1.7; }
+  .heroband { display: flex; gap: 10px; justify-content: center; margin-top: 22px; }
+  .heroband img { width: 96px; height: 96px; border-radius: 16px; border: 1px solid var(--line);
+                  background: var(--card); object-fit: contain; box-shadow: var(--shadow); }
+  .heroband img:nth-child(even) { transform: rotate(2.5deg); }
+  .heroband img:nth-child(odd) { transform: rotate(-2deg); }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r);
+          padding: 18px; margin-top: 16px; box-shadow: var(--shadow); }
+  .label { font-size: 12px; font-weight: 700; color: var(--ink-3); letter-spacing: 1.5px; margin-bottom: 12px; }
+  .label b { color: var(--accent); margin-right: 6px; }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+         border: 1.5px solid var(--line); background: var(--card); color: var(--ink);
+         border-radius: 12px; padding: 11px 16px; font-size: 14px; font-weight: 600;
+         cursor: pointer; transition: .15s; }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover { background: var(--accent-h); color: #fff; }
+  .btn.big { width: 100%; padding: 15px; font-size: 16px; border-radius: 999px; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; pointer-events: none; }
+  .btn svg, .ibtn svg { width: 17px; height: 17px; stroke: currentColor; stroke-width: 2;
+        fill: none; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+  .drop { border: 2px dashed #DCC9B6; border-radius: 12px; padding: 28px 16px; text-align: center;
+          cursor: pointer; color: var(--ink-2); transition: .15s; font-size: 14px; }
+  .drop:hover { border-color: var(--accent); }
+  .drop.has { border-style: solid; border-color: var(--ok); color: var(--ok); }
+  .drop img { max-height: 110px; border-radius: 10px; display: block; margin: 0 auto 10px; }
+  .privacy { font-size: 12px; color: var(--ink-3); text-align: center; margin-top: 10px; }
+
+  .search { width: 100%; border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 12px;
+            font-size: 14px; margin-bottom: 12px; background: #FFFDFA; outline: none; }
+  .search:focus { border-color: var(--accent); }
+  .packgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  @media (max-width: 560px) { .packgrid { grid-template-columns: repeat(2, 1fr); } }
+  .pcard { border: 2px solid var(--line); border-radius: 12px; padding: 10px; cursor: pointer;
+           transition: .15s; background: #FFFDFA; }
+  .pcard:hover { border-color: var(--accent); }
+  .pcard.sel { border-color: var(--accent); background: #FFF3EA; }
+  .pcard img, .pph { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 9px; background: #F6F2EC; }
+  .pph { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: var(--ink-3); }
+  .pph svg { width: 28px; height: 28px; stroke: var(--ink-3); stroke-width: 1.6; fill: none; }
+  .pph small { font-size: 11px; }
+  .pname { font-size: 14px; font-weight: 700; margin-top: 8px; display: flex; align-items: baseline; gap: 6px; }
+  .pcount { font-size: 10px; color: var(--ink-3); font-weight: 400; margin-left: auto; white-space: nowrap; }
+  .cbadge { font-size: 10px; font-weight: 700; background: var(--ok); color: #fff; border-radius: 6px; padding: 2px 6px; }
+  .pdesc { font-size: 11px; color: var(--ink-3); margin-top: 4px; line-height: 1.5; }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
+  .chips span { font-size: 10px; background: #F3E9DE; color: #8A6A52; border-radius: 6px; padding: 2px 6px; }
+
+  .chatbox { max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 2px; }
+  .bub { max-width: 86%; padding: 9px 12px; border-radius: 14px; font-size: 14px; line-height: 1.65; white-space: pre-wrap; }
+  .bub.ai { background: #F6F2EC; align-self: flex-start; border-bottom-left-radius: 4px; }
+  .bub.me { background: var(--accent); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
+  .bub.busy { color: var(--ink-3); animation: blink 1.2s ease infinite; }
+  @keyframes blink { 50% { opacity: .45; } }
+
+  .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .opt { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--ink-3); font-weight: 600; flex: 1; min-width: 100px; }
+  .opt select { border: 1.5px solid var(--line); border-radius: 9px; padding: 9px 8px; font-size: 14px;
+                background: #FFFDFA; color: var(--ink); outline: none; }
+  .opt select:focus { border-color: var(--accent); }
+
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  @media (max-width: 430px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+  .cell { aspect-ratio: 1; border: 1px solid var(--line); border-radius: 11px; position: relative;
+          display: flex; align-items: center; justify-content: center; overflow: hidden; background: #F6F2EC; }
+  .cell img { width: 100%; height: 100%; object-fit: contain; animation: pop .3s ease; }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .cap { position: absolute; bottom: 5px; left: 0; right: 0; text-align: center; font-size: 11px; color: var(--ink-3); pointer-events: none; }
+  .spin { width: 22px; height: 22px; border: 3px solid #E8DDD0; border-top-color: var(--accent); border-radius: 50%; animation: r 1s linear infinite; }
+  @keyframes r { to { transform: rotate(360deg); } }
+  .ibtn { position: absolute; width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--line);
+          background: rgba(255,255,255,.95); display: flex; align-items: center; justify-content: center;
+          cursor: pointer; color: var(--ink-2); opacity: 0; transition: .15s; }
+  .ibtn:hover { color: var(--accent); border-color: var(--accent); }
+  .ibtn.tl { top: 5px; left: 5px; } .ibtn.tr { top: 5px; right: 5px; } .ibtn.br { bottom: 5px; right: 5px; }
+  .cell:hover .ibtn { opacity: 1; }
+  @media (hover: none) { .ibtn { opacity: 1; } }
+  .badge { position: absolute; top: 5px; right: 5px; font-size: 10px; font-weight: 800;
+           background: var(--accent); color: #fff; border-radius: 6px; padding: 3px 6px; pointer-events: none; }
+  .badge.busy { background: var(--ink-2); animation: blink 1.2s ease infinite; }
+  .cell.locked { background: repeating-linear-gradient(45deg, #F3EEE6, #F3EEE6 6px, #FAF7F2 6px, #FAF7F2 12px); }
+  .cell.locked svg { width: 20px; height: 20px; stroke: var(--ink-3); stroke-width: 2; fill: none; }
+  .menu { position: absolute; inset: auto 4px 4px 4px; background: rgba(255,255,255,.98);
+          border: 1px solid var(--line); border-radius: 10px; z-index: 5; display: flex; flex-direction: column; overflow: hidden; }
+  .menu button { display: flex; align-items: center; gap: 7px; border: 0; background: none; padding: 8px 9px;
+                 font-size: 11.5px; cursor: pointer; text-align: left; color: var(--ink); }
+  .menu button:hover { background: #FFF3EA; }
+  .menu button + button { border-top: 1px solid #F3E9DE; }
+  .menu svg { width: 13px; height: 13px; stroke: var(--ink-2); stroke-width: 2; fill: none; }
+  .menu small { color: var(--ink-3); margin-left: auto; }
+
+  .unlock { margin-top: 12px; padding: 14px; border: 1.5px dashed #DCC9B6; border-radius: 12px;
+            display: flex; align-items: center; gap: 12px; }
+  .unlock .txt { flex: 1; font-size: 13px; color: var(--ink-2); line-height: 1.6; }
+  .unlock .txt b { color: var(--ink); }
+
+  .actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  .actions .btn { flex: 1; min-width: 150px; }
+
+  .collage img { width: 100%; border-radius: 12px; border: 1px solid var(--line); }
+  .hint { font-size: 13px; color: var(--ink-3); line-height: 1.8; margin-top: 10px; }
+
+  .hist { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; cursor: grab;
+          user-select: none; -webkit-user-select: none; }
+  .hist:active { cursor: grabbing; }
+  .hist img { -webkit-user-drag: none; width: 112px; height: 112px; object-fit: cover;
+              border-radius: 10px; border: 1px solid var(--line); background: #F6F2EC; }
+  .hitem { min-width: 112px; max-width: 112px; cursor: pointer; text-align: center; font-size: 12px; color: var(--ink-2); }
+  .hitem small { display: block; color: var(--ink-3); font-size: 10px; margin-top: 2px; }
+
+  .faq { font-size: 13.5px; color: var(--ink-2); line-height: 1.9; }
+  .faq dt { font-weight: 700; color: var(--ink); margin-top: 12px; }
+  .faq dt:first-child { margin-top: 0; }
+
+  .qrbox { display: none; text-align: center; }
+  .qrbox img { width: 128px; height: 128px; }
+  @media (min-width: 700px) { .qrbox.lan { display: block; } }
+
+  footer.site { text-align: center; color: var(--ink-3); font-size: 12.5px; margin-top: 36px; line-height: 2; }
+  footer.site a { color: var(--ink-2); text-decoration: none; }
+  footer.site a:hover { color: var(--accent); }
+
+  dialog#ask { border: 1px solid var(--line); border-radius: var(--r); padding: 20px; width: min(92vw, 380px);
+               box-shadow: 0 12px 40px rgba(60,40,20,.18); }
+  dialog#ask::backdrop { background: rgba(33,26,18,.35); }
+  dialog#ask h3 { font-size: 15px; margin-bottom: 12px; }
+  dialog#ask input { width: 100%; border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 12px;
+                     font-size: 14px; outline: none; }
+  dialog#ask input:focus { border-color: var(--accent); }
+  dialog#ask .row { margin-top: 14px; justify-content: flex-end; }
+
+  .toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); background: var(--ink);
+           color: #fff; font-size: 13.5px; padding: 11px 18px; border-radius: 999px; z-index: 50;
+           opacity: 0; transition: .25s; pointer-events: none; max-width: 86vw; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <div class="brand">meme<em>·</em>me <span style="font-weight:400;color:var(--ink-3);font-size:13px">表情包工厂</span></div>
+    <a href="https://github.com/alextangson/meme-me" target="_blank" rel="noopener">GitHub ↗</a>
+  </header>
+
+  <section class="hero">
+    <h1>一张照片，<br>变成<em>一整套</em>微信表情包</h1>
+    <p class="sub">自拍、主子萌照、你俩的合照都行——16 个梗共享同一个你，<br>静态加动图，长按就能进微信。</p>
+    <div class="heroband" aria-hidden="true">
+      <img src="/api/pack-preview/shechu" alt="">
+      <img src="/api/pack-preview/maomi" alt="">
+      <img src="/api/pack-preview/qinglv" alt="">
+      <img src="/api/pack-preview/hajimi" alt="">
+    </div>
+  </section>
+
+  <main>
+  <section aria-label="制作流程">
+  <div class="card">
+    <div class="label"><b>01</b>上传照片</div>
+    <div class="drop" id="drop" role="button" tabindex="0">点击选择照片 · 自拍 / 宠物 / 合照</div>
+    <input type="file" id="file" accept="image/*" hidden>
+    <p class="privacy">照片只存在内存里，生成完即弃，服务停止即消失</p>
+  </div>
+
+  <div class="card">
+    <div class="label"><b>02</b>选梗剧本</div>
+    <input class="search" id="psearch" type="search" placeholder="搜剧本或梗：摸鱼 / 拿来吧你 / 求过…">
+    <div class="packgrid" id="packs"></div>
+  </div>
+
+  <div class="card">
+    <div class="label"><b>02+</b>没有合适的？和 AI 策划聊一套专属的（个人 · 情侣 · 品牌 IP）</div>
+    <div class="chatbox" id="chatbox">
+      <div class="bub ai">嗨！想定制什么样的表情包？说说给谁用、什么场合～</div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <input class="search" id="agentInput" style="margin:0;flex:1" placeholder="比如：给我和对象的互怼表情包…">
+      <button class="btn" id="agentSend" aria-label="发送"><svg viewBox="0 0 24 24"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4Z"/></svg></button>
+      <button class="btn primary" id="agentDraft">生成剧本</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="label"><b>03</b>画风与生成</div>
+    <div class="row" style="margin-bottom:14px">
+      <label class="opt">画风
+        <select id="styleSel"><option value="">经典贴纸（默认）</option></select>
+      </label>
+      <label class="opt">文字样式
+        <select id="capSel"><option value="">手写体（默认）</option></select>
+      </label>
+      <label class="opt">模型
+        <select id="prov">
+          <option value="gemini">Gemini（中转）</option>
+          <option value="seedream">即梦 Seedream</option>
+        </select>
+      </label>
+    </div>
+    <button class="btn primary big" id="go" disabled>先免费生成 8 张</button>
+    <p class="privacy" id="goHint">无需注册 · 约 90 秒逐张揭晓 · 满意再出全套</p>
+  </div>
+  </section>
+
+  <section aria-label="生成结果">
+  <div class="card" id="resultCard" style="display:none">
+    <div class="label"><b>04</b>逐张揭晓</div>
+    <div class="grid" id="grid"></div>
+    <div class="unlock" id="unlockZone" style="display:none">
+      <div class="txt"><b>还有 8 个隐藏梗</b><br>解锁全套 16 张，集齐整套人设</div>
+      <button class="btn primary" id="unlockBtn">解锁全套</button>
+    </div>
+    <p class="hint">把鼠标移到任意一张上：换一张（可改文案）· 让它动起来（可指定动作）<br>
+    手机上：长按图片保存 → 微信发给自己 → 长按「添加到表情」</p>
+    <div class="actions" id="resultActions" style="display:none">
+      <a class="btn" id="platformBtn" href="#" download>
+        <svg viewBox="0 0 24 24"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
+        导出上架素材包</a>
+      <a class="btn" id="collageDl" href="#" download="collage.png">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+        下载合集晒图卡</a>
+    </div>
+  </div>
+
+  <div class="card collage" id="collageCard" style="display:none">
+    <div class="label"><b>05</b>合集晒图卡 · 发朋友圈用这张</div>
+    <img id="collageImg" alt="表情包合集晒图卡">
+  </div>
+  </section>
+
+  <div class="card" id="histCard" style="display:none">
+    <div class="label">历史生成 · 点击查看</div>
+    <div class="hist" id="hist"></div>
+  </div>
+
+  <div class="card">
+    <div class="label">常见问题</div>
+    <dl class="faq">
+      <dt>我的照片安全吗？</dt>
+      <dd>照片只在生成期间存在内存里，从不写入磁盘；历史记录只保留生成结果。生成走你配置的模型服务（Gemini / 即梦）。</dd>
+      <dt>怎么导入微信？</dt>
+      <dd>手机打开本页（桌面端扫下方二维码），长按图片保存，微信里发给自己，再长按「添加到表情」。</dd>
+      <dt>能上架微信表情商店吗？</dt>
+      <dd>能。生成全套后点「导出上架素材包」，规格齐全，照 <a href="https://github.com/alextangson/meme-me/blob/main/docs/wechat-platform.md" target="_blank" rel="noopener">上架指南</a> 提交即可。</dd>
+      <dt>品牌 / IP 想批量定制？</dt>
+      <dd>用上面的 AI 策划聊出专属剧本就是起点；商用授权、高分辨率源文件与代上架，<a href="https://github.com/alextangson/meme-me/issues" target="_blank" rel="noopener">来 GitHub 聊</a>。</dd>
+    </dl>
+  </div>
+
+  <div class="card qrbox" id="qrbox">
+    <div class="label">手机扫码打开本页 · 长按直接保存</div>
+    <img src="/api/lan-qr" alt="局域网访问二维码" onload="this.parentElement.classList.add('lan')" onerror="this.parentElement.style.display='none'">
+  </div>
+  </main>
+
+  <footer class="site">
+    <a href="https://github.com/alextangson/meme-me" target="_blank" rel="noopener">开源 GitHub</a> ·
+    <a href="https://github.com/alextangson/meme-me/blob/main/docs/wechat-platform.md" target="_blank" rel="noopener">上架指南</a> ·
+    Apache-2.0<br>本地运行 · 你的照片不出这台电脑（生成调用除外）
+  </footer>
+</div>
+
+<dialog id="ask">
+  <h3 id="askTitle"></h3>
+  <input id="askInput" type="text">
+  <div class="row">
+    <button class="btn" id="askCancel">取消</button>
+    <button class="btn primary" id="askOk">确定</button>
+  </div>
+</dialog>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let selfie = null, packId = null, jobId = null, timer = null, agentDraftId = '';
+
+const ICONS = {
+  refresh: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 2v6h-6"/><path d="M21 8a9 9 0 1 0 2.4 8"/></svg>',
+  play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3l14 9-14 9V3z"/></svg>',
+  lock: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+  face: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 10h.01M15 10h.01"/><path d="M8 15c1.5 1.5 6.5 1.5 8 0"/></svg>',
+};
+
+function showToast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._h);
+  t._h = setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+function askText(title, placeholder) {
+  return new Promise((resolve) => {
+    const d = $('ask');
+    $('askTitle').textContent = title;
+    const input = $('askInput');
+    input.value = '';
+    input.placeholder = placeholder || '';
+    const done = (val) => { d.close(); cleanup(); resolve(val); };
+    const onOk = () => done(input.value.trim());
+    const onCancel = () => done(null);
+    const onKey = (e) => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); onOk(); } };
+    function cleanup() {
+      $('askOk').removeEventListener('click', onOk);
+      $('askCancel').removeEventListener('click', onCancel);
+      input.removeEventListener('keydown', onKey);
+    }
+    $('askOk').addEventListener('click', onOk);
+    $('askCancel').addEventListener('click', onCancel);
+    input.addEventListener('keydown', onKey);
+    d.showModal();
+    input.focus();
+  });
+}
+
+// ---- 剧本选择 ----
+let allPacks = [];
+
+function renderPacks(filter) {
+  const box = $('packs');
+  const kw = (filter || '').trim().toLowerCase();
+  const shown = allPacks.filter(p => !kw
+    || p.name.toLowerCase().includes(kw)
+    || (p.description || '').toLowerCase().includes(kw)
+    || p.captions.some(c => c.toLowerCase().includes(kw)));
+  if (!shown.find(p => p.id === packId)) packId = shown.length ? shown[0].id : null;
+  box.innerHTML = '';
+  if (!shown.length) {
+    box.innerHTML = '<p class="hint">没有匹配的剧本——用上面的 AI 策划定制一套，或去 GitHub 投稿。</p>';
+    return;
+  }
+  shown.forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'pcard' + (p.id === packId ? ' sel' : '');
+    div.setAttribute('role', 'button');
+    const chips = p.captions.slice(0, 3).map(c => `<span>${c}</span>`).join('')
+      + `<span>+${p.meme_count - 3}</span>`;
+    div.innerHTML = `${p.preview_url
+        ? `<img src="${p.preview_url}" loading="lazy" alt="${p.name}预览">`
+        : `<div class="pph">${ICONS.face}<small>预览生成中…</small></div>`}
+      <div class="pname">${p.name}${p.custom ? '<span class="cbadge">定制</span>' : ''}<span class="pcount">${p.meme_count}梗</span></div>
+      <div class="pdesc">${p.description || ''}</div>
+      <div class="chips">${chips}</div>`;
+    div.onclick = () => { packId = p.id; renderPacks($('psearch').value); };
+    box.appendChild(div);
+  });
+}
+
+function refreshPacks(selectId) {
+  return fetch('/api/packs').then(r => r.json()).then(packs => {
+    allPacks = packs;
+    if (selectId) packId = selectId;
+    renderPacks($('psearch').value);
+  });
+}
+
+refreshPacks();
+$('psearch').oninput = (e) => renderPacks(e.target.value);
+
+// ---- 画风 ----
+fetch('/api/styles').then(r => r.json()).then(d => {
+  d.styles.forEach(s => $('styleSel').add(new Option(`${s.name} · ${s.desc}`, s.id)));
+  d.caption_styles.forEach(s => $('capSel').add(new Option(`${s.name} · ${s.desc}`, s.id)));
+});
+
+// ---- 上传 ----
+$('drop').onclick = () => $('file').click();
+$('drop').onkeydown = (e) => { if (e.key === 'Enter') $('file').click(); };
+$('file').onchange = (e) => {
+  selfie = e.target.files[0];
+  if (!selfie) return;
+  const drop = $('drop');
+  drop.classList.add('has');
+  drop.innerHTML = `<img src="${URL.createObjectURL(selfie)}" alt="已选照片">已选择，点击可更换`;
+  $('go').disabled = false;
+  $('packs').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+};
+
+// ---- 生成 ----
+$('go').onclick = async () => {
+  $('go').disabled = true;
+  const fd = new FormData();
+  fd.append('selfie', selfie);
+  fd.append('pack_id', packId);
+  fd.append('provider', $('prov').value);
+  fd.append('style', $('styleSel').value);
+  fd.append('caption_style', $('capSel').value);
+  const resp = await fetch('/api/generate', { method: 'POST', body: fd });
+  if (!resp.ok) { showToast(await resp.text()); $('go').disabled = false; return; }
+  jobId = (await resp.json()).job_id;
+  $('resultCard').style.display = 'block';
+  $('collageCard').style.display = 'none';
+  $('resultActions').style.display = 'none';
+  $('unlockZone').style.display = 'none';
+  $('grid').innerHTML = '';
+  $('resultCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  startPoll();
+};
+
+function startPoll() { if (timer) clearInterval(timer); timer = setInterval(poll, 1000); }
+
+async function poll() {
+  const resp = await fetch(`/api/jobs/${jobId}`);
+  if (!resp.ok) return;
+  const job = await resp.json();
+  render(job);
+  const doneCount = job.images.filter(i => i.status === 'done').length;
+  if (job.status === 'running') {
+    $('go').textContent = `生成中 ${doneCount}/${job.images.length}…`;
+  }
+  const busy = job.status === 'running' || job.images.some(i => i.anim_status === 'running');
+  if (!busy) {
+    if (timer) { clearInterval(timer); timer = null; loadHistory(); }
+    $('go').disabled = !selfie;
+    $('go').textContent = '先免费生成 8 张';
+    if (job.error) showToast(job.error);
+    $('unlockZone').style.display = (job.status === 'done' && job.images.length === 8) ? 'flex' : 'none';
+    $('resultActions').style.display = doneCount ? 'flex' : 'none';
+    $('platformBtn').href = `/api/jobs/${jobId}/platform-pack`;
+  } else {
+    $('unlockZone').style.display = 'none';
+  }
+  if (job.collage_url) {
+    const src = job.collage_url + '?t=' + (job.status === 'running' ? 0 : Date.now());
+    $('collageImg').src = src;
+    $('collageDl').href = job.collage_url;
+    $('collageCard').style.display = 'block';
+  }
+}
+
+function cellState(img) { return img.status + ':' + img.anim_status; }
+
+function render(job) {
+  const grid = $('grid');
+  if (grid.children.length !== job.images.length) {
+    grid.innerHTML = '';
+    job.images.forEach(img => {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.id = 'cell-' + img.index;
+      grid.appendChild(cell);
+    });
+  }
+  job.images.forEach(img => {
+    const cell = $('cell-' + img.index);
+    const state = cellState(img);
+    if (cell.dataset.state === state) return;
+    cell.dataset.state = state;
+    if (img.status === 'pending') {
+      cell.innerHTML = `<span class="cap">${img.caption}</span>`;
+    } else if (img.status === 'running') {
+      cell.innerHTML = `<div class="spin"></div><span class="cap">${img.caption}</span>`;
+    } else if (img.status === 'error') {
+      cell.innerHTML = `<span class="cap">失败，可重试</span>
+        <button class="ibtn tl" title="换一张" aria-label="换一张">${ICONS.refresh}</button>`;
+      cell.querySelector('.ibtn').onclick = () => retry(img.index);
+    } else if (img.anim_status === 'done') {
+      cell.innerHTML = `<img src="${img.anim_url}?t=${Date.now()}" alt="${img.caption} 动图">
+        <span class="badge">GIF</span>
+        <button class="ibtn br" title="换一种动法" aria-label="换一种动法">${ICONS.play}</button>`;
+      cell.querySelector('.ibtn').onclick = (e) => { e.stopPropagation(); animMenu(img.index); };
+    } else if (img.anim_status === 'running') {
+      cell.innerHTML = `<img src="${img.url}" alt="${img.caption}"><span class="badge busy">动图中</span>`;
+    } else {
+      cell.innerHTML = `<img src="${img.url}?t=${Date.now()}" alt="${img.caption}">
+        <button class="ibtn tl" title="换一张（可改文案）" aria-label="换一张">${ICONS.refresh}</button>
+        <button class="ibtn tr" title="让它动起来" aria-label="让它动起来">${ICONS.play}</button>`;
+      const [redo, anim] = cell.querySelectorAll('.ibtn');
+      redo.onclick = (e) => { e.stopPropagation(); retry(img.index); };
+      anim.onclick = (e) => { e.stopPropagation(); animMenu(img.index); };
+    }
+  });
+}
+
+async function retry(index) {
+  const text = await askText('换一张：想改的文案？', '留空保持原文案，只重新生成画面');
+  if (text === null) return;
+  const cell = $('cell-' + index);
+  cell.dataset.state = '';
+  cell.innerHTML = '<div class="spin"></div>';
+  const fd = new FormData();
+  if (text) fd.append('caption', text);
+  const resp = await fetch(`/api/jobs/${jobId}/retry/${index}`, { method: 'POST', body: fd });
+  if (!resp.ok) showToast((await resp.json()).detail || '重试失败');
+  startPoll();
+}
+
+function animMenu(index) {
+  const cell = $('cell-' + index);
+  const old = cell.querySelector('.menu');
+  if (old) { old.remove(); return; }
+  const menu = document.createElement('div');
+  menu.className = 'menu';
+  menu.innerHTML = `
+    <button data-m="shake">${ICONS.refresh}抖一抖<small>免费 · 秒出</small></button>
+    <button data-m="frames">${ICONS.play}拼帧<small>约 30 秒</small></button>
+    <button data-m="video">${ICONS.play}视频级<small>约 2 分钟</small></button>`;
+  menu.querySelectorAll('button').forEach(b => {
+    b.onclick = async (e) => {
+      e.stopPropagation(); menu.remove();
+      let motion = '';
+      if (b.dataset.m !== 'shake') {
+        const t = await askText('想要什么动作？', '留空用默认，比如：举着咖啡杯慢动作干杯');
+        if (t === null) return;
+        motion = t;
+      }
+      animate(index, b.dataset.m, motion);
+    };
+  });
+  cell.appendChild(menu);
+  setTimeout(() => document.addEventListener('click', () => menu.remove(), { once: true }), 0);
+}
+
+async function animate(index, mode, motion) {
+  const fd = new FormData();
+  fd.append('mode', mode);
+  if (motion) fd.append('motion', motion);
+  const resp = await fetch(`/api/jobs/${jobId}/animate/${index}`, { method: 'POST', body: fd });
+  if (!resp.ok) { showToast((await resp.json()).detail || '动图失败'); return; }
+  startPoll();
+}
+
+// ---- 解锁全套 ----
+$('unlockBtn').onclick = async () => {
+  $('unlockBtn').disabled = true;
+  const resp = await fetch(`/api/jobs/${jobId}/extend`, { method: 'POST' });
+  $('unlockBtn').disabled = false;
+  if (!resp.ok) { showToast((await resp.json()).detail || '解锁失败'); return; }
+  $('unlockZone').style.display = 'none';
+  startPoll();
+};
+
+// ---- AI 策划 ----
+function bubble(text, cls) {
+  const box = $('chatbox');
+  const div = document.createElement('div');
+  div.className = 'bub ' + cls;
+  div.textContent = text;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+  return div;
+}
+
+async function agentSend() {
+  const text = $('agentInput').value.trim();
+  if (!text) return;
+  $('agentInput').value = '';
+  bubble(text, 'me');
+  const busy = bubble('策划思考中…', 'ai busy');
+  $('agentSend').disabled = true;
+  const fd = new FormData();
+  fd.append('message', text);
+  if (agentDraftId) fd.append('draft_id', agentDraftId);
+  try {
+    const resp = await fetch('/api/agent/chat', { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.detail || resp.status);
+    agentDraftId = data.draft_id;
+    busy.className = 'bub ai';
+    busy.textContent = data.reply;
+  } catch (e) {
+    busy.className = 'bub ai';
+    busy.textContent = '出错了：' + e.message;
+  }
+  $('agentSend').disabled = false;
+}
+
+async function agentMakeDraft() {
+  if (!agentDraftId) { bubble('先说说你的需求，聊一两句我才好出方案～', 'ai'); return; }
+  const busy = bubble('正在写剧本（约 20 秒）…', 'ai busy');
+  $('agentDraft').disabled = true;
+  const fd = new FormData();
+  fd.append('draft_id', agentDraftId);
+  try {
+    const resp = await fetch('/api/agent/draft', { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.detail || resp.status);
+    busy.className = 'bub ai';
+    busy.textContent = `「${data.name}」写好了！前 8 个梗：${data.captions.join('、')}。已加入剧本列表（带「定制」标），不满意继续聊，再点生成会出新版本。`;
+    await refreshPacks(data.pack_id);
+    $('packs').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => refreshPacks(packId), 25000);
+  } catch (e) {
+    busy.className = 'bub ai';
+    busy.textContent = '生成失败：' + e.message;
+  }
+  $('agentDraft').disabled = false;
+}
+
+$('agentSend').onclick = agentSend;
+$('agentDraft').onclick = agentMakeDraft;
+$('agentInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); agentSend(); }
+});
+
+// ---- 历史 ----
+async function loadHistory() {
+  const items = await (await fetch('/api/history')).json();
+  if (!items.length) return;
+  $('histCard').style.display = 'block';
+  const box = $('hist');
+  box.innerHTML = '';
+  items.forEach(it => {
+    const div = document.createElement('div');
+    div.className = 'hitem';
+    const when = it.created_at ? new Date(it.created_at * 1000).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+    div.innerHTML = `<img src="${it.thumb || ''}" alt="${it.pack_name}">${it.pack_name}<small>${when} · ${it.done}/${it.total}张</small>`;
+    div.onclick = () => openJob(it.job_id);
+    box.appendChild(div);
+  });
+}
+
+function openJob(id) {
+  jobId = id;
+  $('resultCard').style.display = 'block';
+  $('collageCard').style.display = 'none';
+  $('grid').innerHTML = '';
+  startPoll();
+  $('resultCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function makeDraggable(el) {
+  let down = false, startX = 0, startLeft = 0, moved = false;
+  el.addEventListener('pointerdown', (e) => {
+    down = true; moved = false; startX = e.clientX; startLeft = el.scrollLeft;
+    el.setPointerCapture(e.pointerId);
+  });
+  el.addEventListener('pointermove', (e) => {
+    if (!down) return;
+    const dx = e.clientX - startX;
+    if (Math.abs(dx) > 5) { moved = true; el.scrollLeft = startLeft - dx; }
+  });
+  ['pointerup', 'pointercancel'].forEach(ev => el.addEventListener(ev, () => { down = false; }));
+  el.addEventListener('click', (e) => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true);
+  el.addEventListener('wheel', (e) => {
+    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { el.scrollLeft += e.deltaY; e.preventDefault(); }
+  }, { passive: false });
+}
+makeDraggable($('hist'));
+
+loadHistory();
+</script>
+</body>
+</html>

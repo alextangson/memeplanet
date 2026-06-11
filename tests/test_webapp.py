@@ -453,3 +453,27 @@ def test_platform_pack_download(client):
     assert resp.status_code == 200
     assert resp.content[:2] == b"PK"  # zip magic
     assert client.get("/api/jobs/nope/platform-pack").status_code == 404
+
+
+def test_extend_generates_remaining_eight(client):
+    job_id = _animated_job(client)  # free tier: 8 done
+    resp = client.post(f"/api/jobs/{job_id}/extend")
+    assert resp.status_code == 200
+    deadline = time.time() + 10
+    while time.time() < deadline:
+        job = client.get(f"/api/jobs/{job_id}").json()
+        if job["status"] != "running":
+            break
+        time.sleep(0.05)
+    assert len(job["images"]) == 16
+    assert all(i["status"] == "done" for i in job["images"])
+    assert job["images"][8]["caption"]  # 第 9 个梗有文案
+
+    # 已是全套则拒绝
+    assert client.post(f"/api/jobs/{job_id}/extend").status_code == 409
+
+
+def test_extend_blocked_without_selfie(client):
+    job_id = _animated_job(client)
+    fresh = TestClient(webapp.create_app())
+    assert fresh.post(f"/api/jobs/{job_id}/extend").status_code == 409
