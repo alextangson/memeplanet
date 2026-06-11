@@ -54,8 +54,14 @@ class SeedanceVideoProvider:
         self._model = model or os.environ.get("MEMEME_SEEDANCE_MODEL", DEFAULT_MODEL)
         self._base_url = os.environ.get("ARK_BASE_URL", DEFAULT_BASE_URL)
 
-    def animate(self, prompt: str, image: bytes, *, timeout: float = 300) -> bytes:
-        """Returns mp4 bytes."""
+    def animate(self, prompt: str, image: bytes, *, timeout: float | None = None) -> bytes:
+        """Returns mp4 bytes.
+
+        死线含方舟侧排队时间（并发任务超配额会排队），默认放宽到 600s，
+        env MEMEME_SEEDANCE_TIMEOUT 可调。
+        """
+        if timeout is None:
+            timeout = float(os.environ.get("MEMEME_SEEDANCE_TIMEOUT", "600"))
         headers = {"Authorization": f"Bearer {self._api_key}"}
         resp = httpx.post(
             f"{self._base_url}/api/v3/contents/generations/tasks",
@@ -65,17 +71,22 @@ class SeedanceVideoProvider:
         )
         task_id = extract_task_id(resp.json())
 
+        task_url = f"{self._base_url}/api/v3/contents/generations/tasks/{task_id}"
         deadline = time.time() + timeout
         while time.time() < deadline:
             time.sleep(3)
             status = httpx.get(
-                f"{self._base_url}/api/v3/contents/generations/tasks/{task_id}",
-                headers=headers,
-                timeout=30, trust_env=False,
+                task_url, headers=headers, timeout=30, trust_env=False
             ).json()
             url = extract_video_url(status)
             if url:
                 video = httpx.get(url, timeout=120, follow_redirects=True, trust_env=False)
                 video.raise_for_status()
                 return video.content
-        raise RuntimeError(f"Seedance task timed out after {timeout}s")
+        try:  # 超时后任务在方舟侧还在跑、还在计费——尽力取消
+            httpx.delete(task_url, headers=headers, timeout=15, trust_env=False)
+        except Exception:
+            pass
+        raise RuntimeError(
+            f"Seedance task {task_id} timed out after {timeout:.0f}s（已尝试取消）"
+        )

@@ -786,3 +786,83 @@ def test_styles_sorted_by_popularity(client):
     assert by_id["anime"]["uses"] == 2
     assert by_id["bojack"]["uses"] == 1
     assert by_id["felt"]["uses"] == 0
+
+
+def test_backend_failure_logged_for_admin_triage(client, tmp_path, monkeypatch):
+    # 后端异常必须可排查：server_error 落 events.jsonl（带 scope/job/张数），admin 能看到
+    import json as _json
+
+    monkeypatch.setattr(webapp, "EVENTS_FILE", tmp_path / "events.jsonl")
+    monkeypatch.setattr(webapp, "ADMIN_KEY", "k")
+
+    class Boom:
+        def generate(self, prompt, reference):
+            raise RuntimeError("relay 503")
+
+    monkeypatch.setattr(webapp, "_make_provider", lambda name="": Boom())
+    monkeypatch.setattr(webapp, "_fallback_image_provider", lambda n: None)
+
+    resp = client.post(
+        "/api/generate",
+        files={"selfie": ("me.jpg", _selfie_bytes(), "image/jpeg")},
+        data={"pack_id": "shechu"},
+    )
+    job_id = resp.json()["job_id"]
+    job = _wait_done(client, job_id)
+    assert job["status"] == "error"
+
+    rows = [
+        _json.loads(line)
+        for line in (tmp_path / "events.jsonl").read_text().splitlines()
+    ]
+    errs = [r for r in rows if r["name"] == "server_error"]
+    assert errs, "后端异常没有落盘"
+    assert errs[0]["scope"] == "generate"
+    assert errs[0]["job_id"] == job_id
+    assert "RuntimeError" in errs[0]["detail"]
+
+    data = client.get("/api/admin/data", params={"key": "k"}).json()
+    assert any("relay 503" in e["detail"] for e in data["errors"])
+    # 每张图的错误各自归属，不再互相覆盖
+    assert all("relay 503" in (i.get("error") or "") for i in job["images"])
+
+
+def test_video_animations_queue_through_slots(client, monkeypatch):
+    # 视频任务串行排队（防超方舟并发配额→排队超时），不是拒绝也不是放飞
+    import threading as _t
+
+    monkeypatch.setattr(webapp, "_VIDEO_SLOTS", _t.Semaphore(1))
+    monkeypatch.setattr(webapp, "mp4_to_wechat_gif", lambda mp4, **kw: _tiny_gif())
+    gate = _t.Event()
+    started: list = []
+
+    class SlowVideo:
+        def animate(self, prompt, image, **kw):
+            started.append(1)
+            gate.wait(5)
+            return b"MP4"
+
+    monkeypatch.setattr(webapp, "_make_video_provider", lambda: SlowVideo())
+    job_id = _animated_job(client)
+    assert client.post(f"/api/jobs/{job_id}/animate/1", data={"mode": "video"}).status_code == 200
+    assert client.post(f"/api/jobs/{job_id}/animate/2", data={"mode": "video"}).status_code == 200
+    time.sleep(0.4)
+    assert len(started) == 1  # 第二个在信号量上排队，没并发打上游
+    gate.set()
+    _wait_anim(client, job_id, 0)
+    job = _wait_anim(client, job_id, 1)
+    assert job["images"][0]["anim_status"] == "done"
+    assert job["images"][1]["anim_status"] == "done"
+
+
+def test_drafts_survive_restart(agent_client, tmp_path, monkeypatch):
+    # 用户跟 AI 编剧聊到一半赶上部署重启，不能「对话不存在」
+    monkeypatch.setattr(webapp, "DRAFTS_DIR", tmp_path / "drafts")
+    draft_id = agent_client.post(
+        "/api/agent/chat", data={"message": "程序员上线日"}
+    ).json()["draft_id"]
+
+    fresh = TestClient(webapp.create_app())  # 重启
+    resp = fresh.post("/api/agent/draft", data={"draft_id": draft_id})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["pack_id"]

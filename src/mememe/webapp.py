@@ -43,6 +43,7 @@ logger = logging.getLogger("mememe.webapp")
 OUTPUT_ROOT = Path("out/web")
 LEADS_FILE = Path("out/leads.jsonl")
 EVENTS_FILE = Path("out/events.jsonl")  # 转化漏斗埋点（unlock_shown/unlock_free_click）
+DRAFTS_DIR = Path("out/drafts")  # AI 编剧对话落盘——部署重启不丢用户聊到一半的需求
 # B 端联系入口：放一张微信二维码图在这就会出现在 /custom 页（个人数据，不进 repo）
 CONTACT_QR_FILE = Path(os.environ.get("MEMEME_CONTACT_QR", "out/contact-qr.png"))
 PACKS_DIR = Path(os.environ.get("MEMEME_PACKS_DIR", "packs"))
@@ -56,6 +57,26 @@ _GEN_SLOTS = threading.Semaphore(MAX_CONCURRENT_GENERATIONS)
 # 中转站 Gemini 主力（包月边际成本低）；即梦按量 ¥0.2/张 做每张自动兜底
 DEFAULT_PROVIDER = os.environ.get("MEMEME_PROVIDER", "gemini")
 GEN_FANOUT = int(os.environ.get("MEMEME_GEN_FANOUT", "4"))  # 单任务内并发出图张数
+# 视频任务全局串行排队：方舟 i2v 并发配额小，超额任务在方舟侧排队会把死线吃光
+_VIDEO_SLOTS = threading.Semaphore(int(os.environ.get("MEMEME_VIDEO_CONCURRENT", "2")))
+
+
+def _log_server_error(scope: str, exc: Exception, **ctx) -> None:
+    """后端异常双写：journalctl 拿完整堆栈，events.jsonl 给 /admin 排查。"""
+    logger.error("%s failed %s", scope, ctx, exc_info=exc)
+    row = {
+        "name": "server_error",
+        "scope": scope,
+        "detail": f"{type(exc).__name__}: {exc}"[:500],
+        "ts": time.time(),
+        **ctx,
+    }
+    try:
+        EVENTS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with EVENTS_FILE.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(row, ensure_ascii=False) + "\n")
+    except OSError:
+        pass
 
 
 def _make_scriptwriter():
@@ -295,7 +316,13 @@ def _generate_one(job: Job, provider: ImageProvider, pos: int) -> None:
     except Exception as e:  # 单张失败只记这张，其余照常；用户可重摇
         with job.lock:
             job.images[pos]["status"] = "error"
+            job.images[pos]["error"] = str(e)[:200]  # 每张各自归属，不互相覆盖
         job.error = str(e)
+        _log_server_error(
+            "generate", e,
+            job_id=job.id, index=index,
+            provider=job.provider_name or DEFAULT_PROVIDER,
+        )
 
 
 def _generate_batch(job: Job, provider: ImageProvider, positions: list[int]) -> None:
@@ -358,6 +385,9 @@ def _run_animate(
     job: Job, provider, index: int, mode: str, motion: str | None = None
 ) -> None:
     pos = index - 1
+    holds_slot = mode == "video"
+    if holds_slot:
+        _VIDEO_SLOTS.acquire()  # 排队等槽位，慢一点可以，撞配额超时不行
     try:
         gif = _make_anim_gif(job, index, mode, provider, motion)
         stem = _sticker_stem(job, index)
@@ -368,7 +398,12 @@ def _run_animate(
     except Exception as e:
         with job.lock:
             job.images[pos]["anim_status"] = "error"
+            job.images[pos]["anim_error"] = str(e)[:200]
         job.error = str(e)
+        _log_server_error("animate", e, job_id=job.id, index=index, mode=mode)
+    finally:
+        if holds_slot:
+            _VIDEO_SLOTS.release()
     _save_meta(job)
 
 
@@ -400,8 +435,10 @@ def _run_retry(
     except Exception as e:
         with job.lock:
             job.images[pos]["status"] = "error"
+            job.images[pos]["error"] = str(e)[:200]
         job.status = "done"
         job.error = str(e)
+        _log_server_error("retry", e, job_id=job.id, index=index)
     _save_meta(job)
 
 
@@ -426,8 +463,12 @@ def _admin_data(jobs: dict[str, "Job"]) -> dict:
     errors = []
     for e in events:
         funnel[e["name"]] = funnel.get(e["name"], 0) + 1
-        if e["name"].startswith(("js_error", "js_reject")) and e.get("detail"):
-            errors.append({"detail": e["detail"], "ts": e.get("ts", 0)})
+        if e["name"].startswith(("js_error", "js_reject", "server_error")) and e.get(
+            "detail"
+        ):
+            scope = e.get("scope", "")
+            detail = f"[{scope}] {e['detail']}" if scope else e["detail"]
+            errors.append({"detail": detail, "ts": e.get("ts", 0)})
 
     by_status: dict[str, int] = {}
     by_pack: dict[str, int] = {}
@@ -575,6 +616,27 @@ def create_app() -> FastAPI:
 
     drafts: dict[str, list] = {}
 
+    def _load_draft(draft_id: str) -> list | None:
+        """部署重启后从盘恢复对话——用户聊到一半的需求不能因重启蒸发。"""
+        if not re.fullmatch(r"[0-9a-f]{12}", draft_id):
+            return None
+        path = DRAFTS_DIR / f"{draft_id}.json"
+        if not path.exists():
+            return None
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            return None
+
+    def _persist_draft(draft_id: str, history: list) -> None:
+        try:
+            DRAFTS_DIR.mkdir(parents=True, exist_ok=True)
+            (DRAFTS_DIR / f"{draft_id}.json").write_text(
+                json.dumps(history, ensure_ascii=False), encoding="utf-8"
+            )
+        except OSError as e:
+            _log_server_error("draft_persist", e, draft_id=draft_id)
+
     @app.post("/api/agent/chat")
     def agent_chat(message: str = Form(...), draft_id: str = Form("")) -> dict:
         if not draft_id:
@@ -582,25 +644,34 @@ def create_app() -> FastAPI:
             drafts[draft_id] = []
         history = drafts.get(draft_id)
         if history is None:
+            history = _load_draft(draft_id)
+            if history is not None:
+                drafts[draft_id] = history
+        if history is None:
             raise HTTPException(404, "对话不存在，刷新页面重新开始")
         history.append({"role": "user", "content": message})
         try:
             reply = _make_scriptwriter().reply(history)
         except Exception as e:
             history.pop()
+            _log_server_error("agent_chat", e, draft_id=draft_id)
             raise HTTPException(502, f"策划暂时掉线了：{e}")
         history.append({"role": "assistant", "content": reply})
+        _persist_draft(draft_id, history)
         return {"draft_id": draft_id, "reply": reply}
 
     @app.post("/api/agent/draft")
     def agent_draft(draft_id: str = Form(...)) -> dict:
-        history = drafts.get(draft_id)
+        history = drafts.get(draft_id) or _load_draft(draft_id)
         if not history:
             raise HTTPException(404, "对话不存在，先聊两句再生成")
         try:
             pack = _make_scriptwriter().draft(history)
         except ValueError as e:
             raise HTTPException(422, str(e))
+        except Exception as e:  # DeepSeek 超时/断连：可观测 + 引导直接重试
+            _log_server_error("agent_draft", e, draft_id=draft_id)
+            raise HTTPException(502, "AI 编剧超时了，对话还在，直接再点一次生成")
         CUSTOM_PACKS_DIR.mkdir(parents=True, exist_ok=True)
         pack_id = pack.id
         n = 2
