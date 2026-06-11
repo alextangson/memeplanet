@@ -40,6 +40,8 @@
   .bub.ai { background: #FCEBD2; align-self: flex-start; border-bottom-left-radius: 4px; }
   .bub.me { background: var(--accent); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
   .bub.busy { color: var(--ink-3); animation: blink 1.2s ease infinite; }
+  .bub.ai strong { font-weight: 700; }
+  .bub.ai code { background: rgba(0,0,0,.06); padding: 1px 5px; border-radius: 5px; font-size: 13px; }
   @keyframes blink { 50% { opacity: .45; } }
 
   .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -199,14 +201,32 @@ function showToast(msg) {
   t._h = setTimeout(() => t.classList.remove('show'), 3200);
 }
 
+// 最小安全 markdown：先转义再处理，避免 XSS；不用 lookbehind（iOS 兼容）
+function mdToHtml(text) {
+  return String(text)
+    .replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))
+    .replace(/^#{1,6}\s*(.+)$/gm, '<strong>$1</strong>')
+    .replace(/^\s*[-*]\s+(.+)$/gm, '• $1')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*([^*\n]+)\*/g, '<em>$1</em>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\n/g, '<br>');
+}
+
 function bubble(text, cls) {
   const box = $('chatbox');
   const div = document.createElement('div');
   div.className = 'bub ' + cls;
-  div.textContent = text;
+  setBub(div, text, cls);
   box.appendChild(div);
   box.scrollTop = box.scrollHeight;
   return div;
+}
+
+// AI 气泡渲染 markdown，用户气泡保持纯文本
+function setBub(div, text, cls) {
+  if (/\bai\b/.test(cls || div.className)) div.innerHTML = mdToHtml(text);
+  else div.textContent = text;
 }
 
 async function agentSend() {
@@ -225,7 +245,7 @@ async function agentSend() {
     if (!resp.ok) throw new Error(data.detail || resp.status);
     agentDraftId = data.draft_id;
     busy.className = 'bub ai';
-    busy.textContent = data.reply;
+    setBub(busy, data.reply, 'ai');
   } catch (e) {
     busy.className = 'bub ai';
     busy.textContent = '出错了：' + e.message;
