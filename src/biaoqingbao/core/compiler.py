@@ -46,6 +46,18 @@ _MOTION_TEMPLATE = """\
 镜头固定不动，背景保持纯白，角色形象和画面文案保持不变。"""
 
 
+_KEYFRAME_TEMPLATE = """\
+这是一张表情包贴纸。请生成同一张贴纸的下一个动画关键帧：
+画风、角色、五官、构图、画面文字、背景全部保持完全不变，
+只把动作微调到「{motion}」过程中的另一个瞬间（手臂/身体位置小幅变化即可）。
+变化幅度必须小，确保两帧连续播放时形成自然的循环动画。"""
+
+
+def compile_keyframe(pack: Pack, meme: Meme) -> str:
+    motion = meme.motion or meme.action
+    return _KEYFRAME_TEMPLATE.format(motion=motion)
+
+
 def compile_motion(pack: Pack, meme: Meme) -> str:
     motion = meme.motion or f"{meme.expression}，重复做出「{meme.action}」的动作"
     return _MOTION_TEMPLATE.format(motion=motion)

@@ -179,3 +179,44 @@ def test_animate_single_sticker(client, monkeypatch):
         _t.sleep(0.05)
     assert job["images"][1]["anim_status"] == "done"
     assert client.get(job["images"][1]["anim_url"]).status_code == 200
+
+
+def _animated_job(client) -> str:
+    resp = client.post(
+        "/api/generate",
+        files={"selfie": ("me.jpg", _selfie_bytes(), "image/jpeg")},
+        data={"pack_id": "shechu"},
+    )
+    job_id = resp.json()["job_id"]
+    _wait_done(client, job_id)
+    return job_id
+
+
+def _wait_anim(client, job_id, pos, timeout=10.0) -> dict:
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        job = client.get(f"/api/jobs/{job_id}").json()
+        if job["images"][pos]["anim_status"] in ("done", "error"):
+            return job
+        time.sleep(0.05)
+    raise AssertionError("anim did not finish")
+
+
+def test_animate_mode_shake_needs_no_video_provider(client):
+    job_id = _animated_job(client)
+    resp = client.post(f"/api/jobs/{job_id}/animate/1", data={"mode": "shake"})
+    assert resp.status_code == 200
+    job = _wait_anim(client, job_id, 0)
+    assert job["images"][0]["anim_status"] == "done"
+    gif = client.get(job["images"][0]["anim_url"])
+    assert gif.status_code == 200
+
+
+def test_animate_mode_frames_uses_image_provider(client):
+    job_id = _animated_job(client)
+    before = len(client.fake_provider.prompts)
+    resp = client.post(f"/api/jobs/{job_id}/animate/2", data={"mode": "frames"})
+    assert resp.status_code == 200
+    job = _wait_anim(client, job_id, 1)
+    assert job["images"][1]["anim_status"] == "done"
+    assert len(client.fake_provider.prompts) == before + 1  # one keyframe edit call

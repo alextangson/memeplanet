@@ -65,3 +65,13 @@ def test_compile_motion_uses_motion_or_falls_back():
     meme_with_motion = meme.model_copy(update={"motion": "手臂反复敬礼"})
     prompt2 = compile_motion(pack, meme_with_motion)
     assert "手臂反复敬礼" in prompt2
+
+
+def test_compile_keyframe_is_minimal_edit_instruction():
+    from biaoqingbao.core.compiler import compile_keyframe
+
+    pack = load_pack(PACKS_DIR / "shechu.yaml")
+    meme = pack.memes[0]
+    instr = compile_keyframe(pack, meme)
+    assert "保持" in instr and "不变" in instr   # minimal-change edit contract
+    assert meme.action in instr or meme.motion in instr

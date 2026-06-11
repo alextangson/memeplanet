@@ -14,9 +14,13 @@ from pathlib import Path
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, Response
 
-from biaoqingbao.core.animate import mp4_to_wechat_gif
+import io
+
+from PIL import Image
+
+from biaoqingbao.core.animate import frames_to_gif, mp4_to_wechat_gif, procedural_gif
 from biaoqingbao.core.collage import build_collage
-from biaoqingbao.core.compiler import compile_meme, compile_motion
+from biaoqingbao.core.compiler import compile_keyframe, compile_meme, compile_motion
 from biaoqingbao.core.postprocess import (
     maybe_remove_background,
     to_sticker_gif,
@@ -114,13 +118,35 @@ def _run_generation(job: Job, provider: ImageProvider) -> None:
         job.error = str(e)
 
 
-def _run_animate(job: Job, provider, index: int) -> None:
+def _make_anim_gif(job: Job, index: int, mode: str, provider) -> bytes:
+    pos = index - 1
+    stem = _sticker_stem(job, index)
+    if mode in ("shake", "bounce"):
+        png = (job.out_dir / f"{stem}.png").read_bytes()
+        return procedural_gif(png, effect=mode)
+    if mode == "frames":
+        raw = (job.out_dir / f"raw-{stem}.png").read_bytes()
+        alt = provider.generate(compile_keyframe(job.pack, job.pack.memes[pos]), raw)
+        frames = [
+            Image.open(io.BytesIO((job.out_dir / f"{stem}.png").read_bytes())),
+            Image.open(
+                io.BytesIO(
+                    to_sticker_png(
+                        maybe_remove_background(alt, enabled=_rembg_available())
+                    )
+                )
+            ),
+        ]
+        return frames_to_gif(frames, fps=5)
+    raw = (job.out_dir / f"raw-{stem}.png").read_bytes()
+    mp4 = provider.animate(compile_motion(job.pack, job.pack.memes[pos]), raw)
+    return mp4_to_wechat_gif(mp4)
+
+
+def _run_animate(job: Job, provider, index: int, mode: str) -> None:
     pos = index - 1
     try:
-        raw = (job.out_dir / f"raw-{_sticker_stem(job, index)}.png").read_bytes()
-        prompt = compile_motion(job.pack, job.pack.memes[pos])
-        mp4 = provider.animate(prompt, raw)
-        gif = mp4_to_wechat_gif(mp4)
+        gif = _make_anim_gif(job, index, mode, provider)
         stem = _sticker_stem(job, index)
         (job.out_dir / f"{stem}.anim.gif").write_bytes(gif)
         with job.lock:
@@ -257,10 +283,12 @@ def create_app() -> FastAPI:
         return {"job_id": job_id}
 
     @app.post("/api/jobs/{job_id}/animate/{index}")
-    def animate(job_id: str, index: int) -> dict:
+    def animate(job_id: str, index: int, mode: str = Form("video")) -> dict:
         job = jobs.get(job_id)
         if job is None:
             raise HTTPException(404, "job not found")
+        if mode not in ("video", "frames", "shake", "bounce"):
+            raise HTTPException(400, f"unknown mode: {mode}")
         if not 1 <= index <= len(job.memes):
             raise HTTPException(400, f"index must be 1..{len(job.memes)}")
         with job.lock:
@@ -270,8 +298,14 @@ def create_app() -> FastAPI:
             if img["anim_status"] == "running":
                 raise HTTPException(409, "already animating")
             img["anim_status"] = "running"
+        if mode == "video":
+            provider = _make_video_provider()
+        elif mode == "frames":
+            provider = _make_provider(job.provider_name)
+        else:
+            provider = None
         threading.Thread(
-            target=_run_animate, args=(job, _make_video_provider(), index), daemon=True
+            target=_run_animate, args=(job, provider, index, mode), daemon=True
         ).start()
         return {"job_id": job_id}
 
@@ -372,6 +406,13 @@ _INDEX_HTML = """<!DOCTYPE html>
            background: #c9551e; color: #fff; border-radius: 6px; padding: 3px 6px; pointer-events:none; }
   .badge.busy { background: #8a6a52; animation: blink 1.2s ease infinite; }
   @keyframes blink { 50% { opacity: .45; } }
+  .menu { position: absolute; inset: auto 4px 4px 4px; background: #fffffffa;
+          border: 1px solid #e5d8ca; border-radius: 10px; z-index: 5;
+          display: flex; flex-direction: column; overflow: hidden; }
+  .menu button { border: 0; background: none; padding: 7px 8px; font-size: 11px;
+                 cursor: pointer; text-align: left; white-space: nowrap; }
+  .menu button:hover { background: #fff3ea; }
+  .menu button + button { border-top: 1px solid #f3e9de; }
   .collage img { width: 100%; border-radius: 14px; border: 1px solid #eee4da; }
   .hint { font-size: 13px; color: #998a7a; line-height: 1.8; margin-top: 10px; }
   .err { color: #c0392b; font-size: 13px; white-space: pre-wrap; margin-top: 8px; }
@@ -527,7 +568,7 @@ function render(job) {
         <div class="act redo" title="重摇">🔄</div>
         <div class="act anim" title="动起来">${animBtn}</div>`;
       cell.querySelector('.redo').onclick = (e) => { e.stopPropagation(); retry(img.index); };
-      cell.querySelector('.anim').onclick = (e) => { e.stopPropagation(); animate(img.index); };
+      cell.querySelector('.anim').onclick = (e) => { e.stopPropagation(); animMenu(img.index); };
     }
   });
 }
@@ -543,8 +584,27 @@ async function retry(index) {
   startPoll();
 }
 
-async function animate(index) {
-  const resp = await fetch(`/api/jobs/${jobId}/animate/${index}`, { method: 'POST' });
+function animMenu(index) {
+  const cell = $('cell-' + index);
+  const old = cell.querySelector('.menu');
+  if (old) { old.remove(); return; }
+  const menu = document.createElement('div');
+  menu.className = 'menu';
+  menu.innerHTML = `
+    <button data-m="shake">⚡ 抖一抖 · 免费秒出</button>
+    <button data-m="frames">🎞 拼帧 · 几分钱 ~30s</button>
+    <button data-m="video">🎬 视频 · 最贵 ~2分钟</button>`;
+  menu.querySelectorAll('button').forEach(b => {
+    b.onclick = (e) => { e.stopPropagation(); menu.remove(); animate(index, b.dataset.m); };
+  });
+  cell.appendChild(menu);
+  setTimeout(() => document.addEventListener('click', () => menu.remove(), { once: true }), 0);
+}
+
+async function animate(index, mode) {
+  const fd = new FormData();
+  fd.append('mode', mode);
+  const resp = await fetch(`/api/jobs/${jobId}/animate/${index}`, { method: 'POST', body: fd });
   if (!resp.ok) { $('err').textContent = await resp.text(); return; }
   startPoll();
 }
