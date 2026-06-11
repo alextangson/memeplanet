@@ -212,7 +212,7 @@
       表情星球
     </a>
     <span class="sp"></span>
-    <a class="nl hideS" href="/custom">AI 定制</a>
+    <a class="nl" href="/custom">AI 定制</a>
     <a class="nl hideS" href="https://github.com/alextangson/memeplanet/blob/main/docs/wechat-platform.md" target="_blank" rel="noopener">上架教程</a>
     <a class="nl" href="https://github.com/alextangson/memeplanet" target="_blank" rel="noopener">GitHub</a>
   </nav>
@@ -362,6 +362,20 @@
 const $ = (id) => document.getElementById(id);
 let selfie = null, packId = null, jobId = null, timer = null, currentStyle = '';
 
+// 把任何前端异常回传服务器日志——复现不了的机型问题就靠它落地
+function report(name, detail) {
+  try {
+    const fd = new FormData();
+    fd.append('name', name);
+    fd.append('job_id', jobId || '');
+    fd.append('detail', String(detail).slice(0, 480));
+    navigator.sendBeacon ? navigator.sendBeacon('/api/events', fd)
+      : fetch('/api/events', { method: 'POST', body: fd });
+  } catch (_) {}
+}
+window.addEventListener('error', (e) => report('js_error', `${e.message} @ ${e.filename}:${e.lineno}`));
+window.addEventListener('unhandledrejection', (e) => report('js_reject', e.reason && (e.reason.message || e.reason)));
+
 const ICONS = {
   refresh: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 2v6h-6"/><path d="M21 8a9 9 0 1 0 2.4 8"/></svg>',
   play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3l14 9-14 9V3z"/></svg>',
@@ -469,29 +483,50 @@ $('file').onchange = (e) => {
   if (!selfie) return;
   const drop = $('drop');
   drop.classList.add('has');
-  drop.innerHTML = `<img src="${URL.createObjectURL(selfie)}" alt="已选照片">已选择，点击可更换`;
+  let preview = '';
+  try { preview = `<img src="${URL.createObjectURL(selfie)}" alt="已选照片">`; }
+  catch (err) { report('preview_fail', err && (err.message || err)); }  // iOS 偶发，不挡流程
+  drop.innerHTML = preview + '已选择，点击可更换';
   $('go').disabled = false;
   $('packs').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 };
 
+// 从 4xx 响应里抽一句人话（detail 可能是字符串、也可能是 FastAPI 的校验数组）
+async function errMessage(resp) {
+  try {
+    const d = (await resp.json()).detail;
+    if (typeof d === 'string') return d;
+    if (Array.isArray(d) && d[0]) return d[0].msg || JSON.stringify(d[0]);
+  } catch (_) {}
+  return '出错了，请稍后再试';
+}
+
 // ---- 生成 ----
 $('go').onclick = async () => {
+  if (!selfie) { showToast('先上传一张照片'); return; }
+  if (!packId) { showToast('先选一套梗剧本'); return; }
   $('go').disabled = true;
-  const fd = new FormData();
-  fd.append('selfie', selfie);
-  fd.append('pack_id', packId);
-  if (currentStyle) fd.append('style', currentStyle);
-  const resp = await fetch('/api/generate', { method: 'POST', body: fd });
-  if (!resp.ok) { showToast(await resp.text()); $('go').disabled = false; return; }
-  jobId = (await resp.json()).job_id;
-  $('resultCard').style.display = 'block';
-  $('collageCard').style.display = 'none';
-  $('resultActions').style.display = 'none';
-  $('resultHooks').style.display = 'none';
-  $('unlockZone').style.display = 'none';
-  $('grid').innerHTML = '';
-  $('resultCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  startPoll();
+  try {
+    const fd = new FormData();
+    fd.append('selfie', selfie);
+    fd.append('pack_id', packId);
+    if (currentStyle) fd.append('style', currentStyle);
+    const resp = await fetch('/api/generate', { method: 'POST', body: fd });
+    if (!resp.ok) { showToast(await errMessage(resp)); $('go').disabled = false; return; }
+    jobId = (await resp.json()).job_id;
+    $('resultCard').style.display = 'block';
+    $('collageCard').style.display = 'none';
+    $('resultActions').style.display = 'none';
+    $('resultHooks').style.display = 'none';
+    $('unlockZone').style.display = 'none';
+    $('grid').innerHTML = '';
+    $('resultCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    startPoll();
+  } catch (err) {
+    report('generate_fail', err && (err.message || err));
+    showToast('网络好像有点问题，再试一次');
+    $('go').disabled = false;
+  }
 };
 
 function startPoll() { if (timer) clearInterval(timer); timer = setInterval(poll, 1000); }
@@ -620,12 +655,7 @@ async function animate(index, mode, motion) {
 }
 
 // ---- 解锁全套：先过付费意向卡（内测免费），埋点喂定价决策 ----
-function track(name) {
-  const fd = new FormData();
-  fd.append('name', name);
-  fd.append('job_id', jobId || '');
-  fetch('/api/events', { method: 'POST', body: fd }).catch(() => {});
-}
+const track = (name) => report(name, '');  // 复用上报通道
 
 $('unlockBtn').onclick = () => { track('unlock_shown'); $('unlockDlg').showModal(); };
 $('unlockCancel').onclick = () => $('unlockDlg').close();

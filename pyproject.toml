@@ -17,7 +17,7 @@ dependencies = [
 
 [project.optional-dependencies]
 rembg = ["rembg>=2.0", "onnxruntime>=1.18"]
-web = ["fastapi>=0.111", "uvicorn>=0.30", "python-multipart>=0.0.9"]
+web = ["fastapi>=0.111", "uvicorn>=0.30", "python-multipart>=0.0.9", "pillow-heif>=0.16"]
 
 [project.scripts]
 memeplanet = "mememe.cli:app"

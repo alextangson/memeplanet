@@ -9,8 +9,16 @@ import io
 
 from PIL import Image
 
+try:  # iPhone 拍照默认 HEIC，注册后 PIL 才能解
+    import pillow_heif
+
+    pillow_heif.register_heif_opener()
+except ImportError:
+    pass
+
 STICKER_SIZE = 240
 GIF_MAX_BYTES = 500 * 1024
+SELFIE_MAX_EDGE = 1536  # 上传图归一化上限，省内存也够供应商用
 
 
 def _open_rgba(image_bytes: bytes) -> Image.Image:
@@ -45,6 +53,25 @@ def to_sticker_gif(image_bytes: bytes) -> bytes:
     if len(out) > GIF_MAX_BYTES:
         raise ValueError(f"GIF exceeds WeChat limit: {len(out)} > {GIF_MAX_BYTES}")
     return out
+
+
+def normalize_selfie(image_bytes: bytes) -> bytes:
+    """把上传照片统一成下行安全的 JPEG：解 HEIC、削尺寸、剥 EXIF。
+
+    非图片（伪装的文本/脚本）在这里被 PIL 拒掉，挡在生成管线之外。
+    """
+    try:
+        img = Image.open(io.BytesIO(image_bytes))
+        img.load()
+    except Exception as e:
+        raise ValueError("无法识别为图片") from e
+    if img.mode != "RGB":
+        img = img.convert("RGB")
+    if max(img.size) > SELFIE_MAX_EDGE:
+        img.thumbnail((SELFIE_MAX_EDGE, SELFIE_MAX_EDGE), Image.LANCZOS)
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=90)
+    return buf.getvalue()
 
 
 def maybe_remove_background(image_bytes: bytes, *, enabled: bool) -> bytes:

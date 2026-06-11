@@ -178,6 +178,19 @@
 const $ = (id) => document.getElementById(id);
 let agentDraftId = '';
 
+// 前端异常回传日志——定制页报错就靠它落地
+function report(name, detail) {
+  try {
+    const fd = new FormData();
+    fd.append('name', name);
+    fd.append('detail', String(detail).slice(0, 480));
+    navigator.sendBeacon ? navigator.sendBeacon('/api/events', fd)
+      : fetch('/api/events', { method: 'POST', body: fd });
+  } catch (_) {}
+}
+window.addEventListener('error', (e) => report('js_error_custom', `${e.message} @ ${e.filename}:${e.lineno}`));
+window.addEventListener('unhandledrejection', (e) => report('js_reject_custom', e.reason && (e.reason.message || e.reason)));
+
 function showToast(msg) {
   const t = $('toast');
   t.textContent = msg;

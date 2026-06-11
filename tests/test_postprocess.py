@@ -6,6 +6,7 @@ from PIL import Image
 from mememe.core.postprocess import (
     STICKER_SIZE,
     maybe_remove_background,
+    normalize_selfie,
     to_sticker_gif,
     to_sticker_png,
 )
@@ -16,6 +17,33 @@ def _synthetic_image(width: int, height: int) -> bytes:
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     return buf.getvalue()
+
+
+def test_normalize_selfie_outputs_decodable_jpeg():
+    out = normalize_selfie(_synthetic_image(800, 600))
+    img = Image.open(io.BytesIO(out))
+    assert img.format == "JPEG"
+    assert img.mode == "RGB"
+
+
+def test_normalize_selfie_downscales_huge_image():
+    out = normalize_selfie(_synthetic_image(6000, 4000))
+    img = Image.open(io.BytesIO(out))
+    assert max(img.size) <= 1536  # 防止超大图把 1G 机器撑爆
+
+
+def test_normalize_selfie_rejects_non_image():
+    with pytest.raises(ValueError):
+        normalize_selfie(b"this is not an image at all")
+
+
+def test_normalize_selfie_handles_heic():
+    pillow_heif = pytest.importorskip("pillow_heif")
+    pillow_heif.register_heif_opener()
+    buf = io.BytesIO()
+    Image.new("RGB", (400, 400), (10, 120, 200)).save(buf, format="HEIF")
+    out = normalize_selfie(buf.getvalue())
+    assert Image.open(io.BytesIO(out)).format == "JPEG"
 
 
 def test_png_is_240_rgba():

@@ -28,6 +28,7 @@ from mememe.core.collage import build_collage
 from mememe.core.compiler import compile_keyframe, compile_meme, compile_motion
 from mememe.core.postprocess import (
     maybe_remove_background,
+    normalize_selfie,
     to_sticker_gif,
     to_sticker_png,
 )
@@ -43,6 +44,9 @@ PACKS_DIR = Path(os.environ.get("MEMEME_PACKS_DIR", "packs"))
 CUSTOM_PACKS_DIR = Path(os.environ.get("MEMEME_CUSTOM_PACKS_DIR", "packs/custom"))
 # 晒图卡二维码落地页；部署后设 MEMEME_QR_URL=https://meme-planet.com/
 DEFAULT_QR_URL = os.environ.get("MEMEME_QR_URL", "https://github.com/alextangson/memeplanet")
+MAX_UPLOAD_BYTES = 12 * 1024 * 1024  # 单张上传上限，挡 OOM-by-upload
+MAX_CONCURRENT_GENERATIONS = int(os.environ.get("MEMEME_MAX_CONCURRENT", "3"))
+_GEN_SLOTS = threading.Semaphore(MAX_CONCURRENT_GENERATIONS)
 
 
 def _make_scriptwriter():
@@ -414,15 +418,17 @@ def create_app() -> FastAPI:
         }
 
     @app.post("/api/events")
-    def events(name: str = Form(...), job_id: str = Form("")) -> dict:
+    def events(
+        name: str = Form(...), job_id: str = Form(""), detail: str = Form("")
+    ) -> dict:
         if not re.fullmatch(r"[a-z0-9_]{1,64}", name):
             raise HTTPException(422, "bad event name")
         EVENTS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        row = {"name": name, "job_id": job_id, "ts": time.time()}
+        if detail:
+            row["detail"] = detail[:500]  # 客户端报错/上下文，截断防滥用
         with EVENTS_FILE.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(
-                {"name": name, "job_id": job_id, "ts": time.time()},
-                ensure_ascii=False,
-            ) + "\n")
+            f.write(json.dumps(row, ensure_ascii=False) + "\n")
         return {"ok": True}
 
     @app.get("/api/packs")
@@ -536,6 +542,16 @@ def create_app() -> FastAPI:
         pack_path = _find_pack_path(pack_id)
         if pack_path is None:
             raise HTTPException(404, f"pack not found: {pack_id}")
+        raw_upload = selfie.file.read(MAX_UPLOAD_BYTES + 1)
+        if len(raw_upload) > MAX_UPLOAD_BYTES:
+            raise HTTPException(413, "照片太大了，请压缩到 12MB 以内再试")
+        try:
+            selfie_bytes = normalize_selfie(raw_upload)
+        except ValueError:
+            raise HTTPException(400, "这看起来不是一张图片，换张照片试试")
+        # 名额满了就婉拒，别让并发把 1G 小机撑爆
+        if not _GEN_SLOTS.acquire(blocking=False):
+            raise HTTPException(429, "正在帮前面的小伙伴生成，请过一会儿再试～")
         pack = load_pack(pack_path)
         job_id = uuid.uuid4().hex[:12]
         out_dir = OUTPUT_ROOT / job_id
@@ -543,7 +559,7 @@ def create_app() -> FastAPI:
         job = Job(
             id=job_id,
             pack=pack,
-            selfie=selfie.file.read(),
+            selfie=selfie_bytes,
             out_dir=out_dir,
             full=full,
             style=style,
@@ -568,9 +584,14 @@ def create_app() -> FastAPI:
         ]
         jobs[job_id] = job
         _save_meta(job)
-        threading.Thread(
-            target=_run_generation, args=(job, _make_provider(provider)), daemon=True
-        ).start()
+
+        def _run_and_release() -> None:
+            try:
+                _run_generation(job, _make_provider(provider))
+            finally:
+                _GEN_SLOTS.release()
+
+        threading.Thread(target=_run_and_release, daemon=True).start()
         return {"job_id": job_id}
 
     @app.get("/api/history")

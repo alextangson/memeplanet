@@ -262,6 +262,39 @@ def test_platform_pack_includes_anim_gifs(client):
     assert "动图/02.gif" not in names
 
 
+def test_generate_rejects_non_image(client):
+    resp = client.post(
+        "/api/generate",
+        files={"selfie": ("evil.txt", b"not an image", "text/plain")},
+        data={"pack_id": "shechu"},
+    )
+    assert resp.status_code == 400
+    assert "图片" in resp.json()["detail"]
+
+
+def test_generate_rejects_oversized_upload(client):
+    big = b"\xff\xd8\xff" + b"0" * (webapp.MAX_UPLOAD_BYTES + 1)
+    resp = client.post(
+        "/api/generate",
+        files={"selfie": ("big.jpg", big, "image/jpeg")},
+        data={"pack_id": "shechu"},
+    )
+    assert resp.status_code == 413
+
+
+def test_generate_returns_429_when_at_capacity(client, monkeypatch):
+    import threading as _t
+
+    # 占满并发名额 → 下一个请求应被婉拒而不是把机器压垮
+    monkeypatch.setattr(webapp, "_GEN_SLOTS", _t.Semaphore(0))
+    resp = client.post(
+        "/api/generate",
+        files={"selfie": ("me.jpg", _selfie_bytes(), "image/jpeg")},
+        data={"pack_id": "shechu"},
+    )
+    assert resp.status_code == 429
+
+
 def test_contact_qr_served_only_when_configured(client, tmp_path, monkeypatch):
     monkeypatch.setattr(webapp, "CONTACT_QR_FILE", tmp_path / "contact-qr.png")
     assert client.get("/api/contact-qr").status_code == 404
