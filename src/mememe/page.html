@@ -104,6 +104,7 @@
   .scard img { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 9px; background: #F3ECD8; }
   .scard b { display: block; font-size: 12px; margin-top: 4px; }
   .scard small { display: block; font-size: 10px; color: var(--ink-3); }
+  .scard .hot { display: inline-block; font-size: 10px; font-weight: 700; background: var(--accent); color: #fff; border-radius: 999px; padding: 1px 7px; margin-top: 3px; }
   .pph { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: var(--ink-3); }
   .pph svg { width: 26px; height: 26px; stroke: var(--ink-3); stroke-width: 1.6; fill: none; }
   .pph small { font-size: 11px; }
@@ -702,6 +703,8 @@ $('restyleBtn').onclick = async () => {
   if (!stylesLoaded) {
     const d = await (await fetch('/api/styles')).json();
     const list = $('styleList');
+    // 人气第一且 uses>=5 才标「最受欢迎」——冷启动期不出鬼数据
+    const hot = d.styles.length && d.styles[0].uses >= 5 ? d.styles[0].id : null;
     const all = [
       { id: '', name: '经典贴纸', desc: '默认风格，重抽一套', preview: '/api/pack-preview/shechu' },
       ...d.styles.map(s => ({ ...s, preview: `/api/pack-preview/style-${s.id}` })),
@@ -710,7 +713,8 @@ $('restyleBtn').onclick = async () => {
       const card = document.createElement('div');
       card.className = 'scard';
       card.setAttribute('role', 'button');
-      card.innerHTML = `<img src="${s.preview}" loading="lazy" alt="${s.name}画风示例"><b>${s.name}</b><small>${s.desc}</small>`;
+      card.innerHTML = `<img src="${s.preview}" loading="lazy" alt="${s.name}画风示例"><b>${s.name}</b><small>${s.desc}</small>`
+        + (s.id === hot ? '<span class="hot">🔥 最受欢迎</span>' : '');
       card.onclick = () => { $('styleDlg').close(); restyle(s.id); };
       list.appendChild(card);
     });

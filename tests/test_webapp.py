@@ -708,3 +708,21 @@ def test_leads_endpoint_appends_jsonl(client, tmp_path, monkeypatch):
 
     line = _json.loads(lead_file.read_text().strip())
     assert line["contact"] == "wx: hello123"
+
+
+def test_styles_sorted_by_popularity(client):
+    for style in ["anime", "anime", "bojack"]:
+        resp = client.post(
+            "/api/generate",
+            files={"selfie": ("me.jpg", _selfie_bytes(), "image/jpeg")},
+            data={"pack_id": "shechu", "style": style},
+        )
+        _wait_done(client, resp.json()["job_id"])
+    data = client.get("/api/styles").json()
+    ids = [s["id"] for s in data["styles"]]
+    assert ids[0] == "anime"
+    assert ids.index("anime") < ids.index("bojack")
+    by_id = {s["id"]: s for s in data["styles"]}
+    assert by_id["anime"]["uses"] == 2
+    assert by_id["bojack"]["uses"] == 1
+    assert by_id["felt"]["uses"] == 0

@@ -522,11 +522,19 @@ def create_app() -> FastAPI:
     def list_styles() -> dict:
         from mememe.core.styles import CAPTION_STYLES, STYLES
 
+        uses: dict[str, int] = {}
+        for job in list(jobs.values()):
+            if job.style:
+                uses[job.style] = uses.get(job.style, 0) + 1
         return {
-            "styles": [
-                {"id": k, "name": v["name"], "desc": v["desc"]}
-                for k, v in STYLES.items()
-            ],
+            # 按使用量降序；平局保持人工精选顺序（稳定排序，零数据 = 现状）
+            "styles": sorted(
+                (
+                    {"id": k, "name": v["name"], "desc": v["desc"], "uses": uses.get(k, 0)}
+                    for k, v in STYLES.items()
+                ),
+                key=lambda s: -s["uses"],
+            ),
             "caption_styles": [
                 {"id": k, "name": v["name"], "desc": v["desc"]}
                 for k, v in CAPTION_STYLES.items()
