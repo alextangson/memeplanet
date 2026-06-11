@@ -17,13 +17,19 @@ def _eight_stickers() -> list[bytes]:
     return [_sticker((30 * i, 100, 200 - 20 * i)) for i in range(8)]
 
 
-def test_collage_is_png_with_3x3_grid_geometry():
+def test_collage_is_branded_poster():
     out = build_collage(_eight_stickers(), pack_name="社畜的一天", qr_url="https://example.com/r/shechu")
     img = Image.open(io.BytesIO(out))
     assert img.format == "PNG"
-    # 3 columns wide; height = header + 3 rows + footer, so taller than wide
-    assert img.width >= 3 * 240
-    assert img.height > img.width
+    assert (img.width, img.height) == (1080, 1440)  # 3:4 朋友圈/小红书原生比例
+    # 躁动黄打底（品牌色 #FFD23D），不是模型默认的白/米白
+    assert img.convert("RGB").getpixel((4, 4)) == (255, 210, 61)
+
+
+def test_collage_handles_long_pack_name():
+    out = build_collage(_eight_stickers(), pack_name="一个特别特别长的定制剧本名字", qr_url="https://e.com")
+    img = Image.open(io.BytesIO(out))
+    assert (img.width, img.height) == (1080, 1440)
 
 
 def test_collage_requires_exactly_eight_stickers():
