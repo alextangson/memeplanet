@@ -404,10 +404,12 @@ def _admin_data(jobs: dict[str, "Job"]) -> dict:
         by_pack[job.pack_name or "?"] = by_pack.get(job.pack_name or "?", 0) + 1
     for job in sorted(jobs.values(), key=lambda j: j.created_at, reverse=True)[:30]:
         done = sum(1 for i in job.images if i["status"] == "done")
+        first = next((i["url"] for i in job.images if i.get("url")), "")
         recent.append({
             "job_id": job.id, "pack_name": job.pack_name, "status": job.status,
             "done": done, "total": len(job.images), "created_at": job.created_at,
             "error": job.error,
+            "thumb": job.collage_url or first,  # 排查生成质量直接看图
         })
 
     return {
@@ -671,9 +673,15 @@ def create_app() -> FastAPI:
         return {"job_id": job_id}
 
     @app.get("/api/history")
-    def history() -> list[dict]:
+    def history(ids: str = "") -> list[dict]:
+        # 历史归属在浏览器（localStorage 记自己的 job id）——服务器只按给定 ids
+        # 返回摘要，不再全局列出所有人的任务；全量排查走 /api/admin/data
+        wanted = [i for i in ids.split(",") if i][:100]
         items = []
-        for job in jobs.values():
+        for jid in wanted:
+            job = jobs.get(jid)
+            if job is None:
+                continue
             done = sum(1 for i in job.images if i["status"] == "done")
             if done == 0:
                 continue  # 一张都没出（失败/刚启动）→ 无缩略图可显，不进历史

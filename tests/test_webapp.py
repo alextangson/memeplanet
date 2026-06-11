@@ -232,12 +232,12 @@ def test_job_meta_persisted_to_disk(client, tmp_path):
     assert "selfie" not in meta  # privacy: never persisted
 
 
-def test_history_endpoint_lists_jobs(client):
+def test_history_requires_explicit_ids(client):
     job_id = _animated_job(client)
-    resp = client.get("/api/history")
-    assert resp.status_code == 200
-    items = resp.json()
-    assert any(i["job_id"] == job_id for i in items)
+    # 不带 ids 不再泄漏全量任务——历史归属随浏览器 localStorage
+    assert client.get("/api/history").json() == []
+    items = client.get("/api/history", params={"ids": f"{job_id},nonexistent"}).json()
+    assert [i["job_id"] for i in items] == [job_id]
     assert items[0]["pack_name"]
 
 
@@ -332,7 +332,8 @@ def test_admin_data_aggregates_leads_events_jobs(client, tmp_path, monkeypatch):
     assert data["funnel"]["unlock_free_click"] == 1
     assert any("boom" in e["detail"] for e in data["errors"])
     assert data["jobs"]["total"] >= 1
-    assert any(j["job_id"] == job_id for j in data["jobs"]["recent"])
+    mine = next(j for j in data["jobs"]["recent"] if j["job_id"] == job_id)
+    assert mine["thumb"]  # admin 保留全量并带缩略图，排查生成质量用
 
 
 def test_generate_rejects_non_image(client):
@@ -432,8 +433,8 @@ def test_failed_job_with_no_images_hidden_from_history(client, monkeypatch):
     job = _wait_done(client, job_id)
     assert job["status"] == "error"
 
-    items = client.get("/api/history").json()
-    assert all(i["job_id"] != job_id for i in items)  # 0 张完成 → 不进历史
+    items = client.get("/api/history", params={"ids": job_id}).json()
+    assert all(i["job_id"] != job_id for i in items)  # 0 张完成 → 即使自己的也不进历史
 
 
 def test_jobs_survive_restart_but_retry_is_blocked(client, tmp_path, monkeypatch):
@@ -629,6 +630,10 @@ def test_styles_endpoint(client):
     data = client.get("/api/styles").json()
     assert any(s["id"] == "bojack" for s in data["styles"])
     assert any(c["id"] == "bold" for c in data["caption_styles"])
+
+    from mememe.core.styles import STYLES
+
+    assert {s["id"] for s in data["styles"]} == set(STYLES)
 
 
 def test_generate_carries_style_through_retry(client, tmp_path):

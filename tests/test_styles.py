@@ -57,3 +57,26 @@ def test_explicit_caption_style_is_uniform():
     p1 = compile_meme(pack, pack.memes[1], caption_style="bold")
     assert p0.split("【文字样式】")[1] == p1.split("【文字样式】")[1]
     assert CAPTION_STYLES["bold"]["block"] in p0
+
+
+NEW_STYLE_IDS = ["felt", "clay", "manga", "pop", "lineart", "crayon", "sticker"]
+
+
+def test_new_styles_registered():
+    for sid in NEW_STYLE_IDS:
+        assert sid in STYLES, sid
+        s = STYLES[sid]
+        assert s["name"] and s["desc"] and s["block"]
+        assert "构图" in s["block"], f"{sid} 必须自带签名构图"
+
+
+def test_new_style_ids_no_collisions():
+    assert not set(NEW_STYLE_IDS) & set(CAPTION_STYLES)
+
+
+def test_compile_with_new_style_keeps_invariants():
+    pack = load_pack(PACKS_DIR / "shechu.yaml")
+    p = compile_meme(pack, pack.memes[0], style="felt")
+    assert STYLES["felt"]["block"] in p
+    # 画风覆盖尾注仍强制一致性与白底
+    assert "主体一致性、纯白背景、白色描边" in p

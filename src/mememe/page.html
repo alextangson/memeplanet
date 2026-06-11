@@ -530,6 +530,7 @@ $('go').onclick = async () => {
     const resp = await fetch('/api/generate', { method: 'POST', body: fd });
     if (!resp.ok) { showToast(await errMessage(resp)); $('go').disabled = false; return; }
     jobId = (await resp.json()).job_id;
+    rememberJob(jobId);
     saveState();
     $('resultCard').style.display = 'block';
     $('collageCard').style.display = 'none';
@@ -713,9 +714,22 @@ async function restyle(styleId) {
   $('go').click();
 }
 
-// ---- 历史 ----
+// ---- 历史（只属于这台浏览器：本地记 id，服务器按 id 取，看不到别人的） ----
+const MY_JOBS_KEY = 'mp_my_jobs';
+function myJobs() {
+  try { return JSON.parse(localStorage.getItem(MY_JOBS_KEY)) || []; } catch { return []; }
+}
+function rememberJob(id) {
+  const ids = myJobs().filter(x => x !== id);
+  ids.unshift(id);
+  localStorage.setItem(MY_JOBS_KEY, JSON.stringify(ids.slice(0, 50)));
+}
+
 async function loadHistory() {
-  const items = await (await fetch('/api/history')).json();
+  const saved = loadState();
+  const ids = [...new Set([...(saved.jobId ? [saved.jobId] : []), ...myJobs()])];
+  if (!ids.length) return;
+  const items = await (await fetch('/api/history?ids=' + ids.map(encodeURIComponent).join(','))).json();
   if (!items.length) return;
   $('histCard').style.display = 'block';
   const box = $('hist');
