@@ -7,6 +7,7 @@ written to disk and vanishes when the server stops.
 import importlib.util
 import hmac
 import json
+import logging
 import os
 import re
 from concurrent.futures import ThreadPoolExecutor
@@ -36,6 +37,8 @@ from mememe.core.postprocess import (
 )
 from mememe.core.schema import Pack, load_pack
 from mememe.providers.base import ImageProvider
+
+logger = logging.getLogger("mememe.webapp")
 
 OUTPUT_ROOT = Path("out/web")
 LEADS_FILE = Path("out/leads.jsonl")
@@ -178,6 +181,37 @@ def _save_meta(job: Job) -> None:
     )
 
 
+def _save_pack_snapshot(out_dir: Path, pack: Pack) -> None:
+    """Pin the pack into the job's own dir so animate/retry/extend survive even
+    if the source yaml is later lost — user-created custom packs live only in
+    packs/custom/ (gitignored, deploy-excluded) and must travel with the job."""
+    (out_dir / "pack.yaml").write_text(
+        yaml.safe_dump(pack.model_dump(), allow_unicode=True, sort_keys=False),
+        encoding="utf-8",
+    )
+
+
+def _resolve_job_pack(meta_path: Path, pack_id: str) -> Pack | None:
+    """Prefer the job-local snapshot; fall back to the shared pack file for
+    legacy jobs that predate snapshots. Never swallow the loss silently."""
+    snapshot = meta_path.parent / "pack.yaml"
+    sources = [snapshot] if snapshot.exists() else []
+    shared = _find_pack_path(pack_id)
+    if shared is not None:
+        sources.append(shared)
+    for src in sources:
+        try:
+            return load_pack(src)
+        except Exception:
+            logger.warning("job %s: failed to load pack from %s", meta_path.parent.name, src)
+    if pack_id:
+        logger.warning(
+            "job %s: pack %r unresolved — animate/retry/extend limited to shake",
+            meta_path.parent.name, pack_id,
+        )
+    return None
+
+
 def _load_jobs() -> dict[str, Job]:
     jobs: dict[str, Job] = {}
     if not OUTPUT_ROOT.exists():
@@ -187,16 +221,14 @@ def _load_jobs() -> dict[str, Job]:
             meta = json.loads(meta_path.read_text(encoding="utf-8"))
         except (ValueError, OSError):
             continue
-        pack = None
-        pack_file = _find_pack_path(meta.get("pack_id", ""))
-        if pack_file is not None:
-            try:
-                pack = load_pack(pack_file)
-            except Exception:
-                pack = None
+        pack = _resolve_job_pack(meta_path, meta.get("pack_id", ""))
         status = meta.get("status", "done")
         if status == "running":  # server died mid-job
             status = "error"
+        images = meta.get("images", [])
+        for img in images:  # server died mid-animation → don't show 「动图中」 forever
+            if img.get("anim_status") == "running":
+                img["anim_status"] = "error"
         jobs[meta["job_id"]] = Job(
             id=meta["job_id"],
             pack=pack,
@@ -211,7 +243,7 @@ def _load_jobs() -> dict[str, Job]:
             caption_style=meta.get("caption_style", ""),
             status=status,
             error=meta.get("error", ""),
-            images=meta.get("images", []),
+            images=images,
             collage_url=meta.get("collage_url", ""),
         )
     return jobs
@@ -643,6 +675,7 @@ def create_app() -> FastAPI:
         job_id = uuid.uuid4().hex[:12]
         out_dir = OUTPUT_ROOT / job_id
         out_dir.mkdir(parents=True, exist_ok=True)
+        _save_pack_snapshot(out_dir, pack)  # 任务自带剧本，源 yaml 丢了也能转动图/重摇/续生成
         job = Job(
             id=job_id,
             pack=pack,

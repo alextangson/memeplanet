@@ -627,6 +627,66 @@ def test_custom_pack_preview_generated_and_served(agent_client, tmp_path, monkey
     assert agent_client.get(pack["preview_url"]).status_code == 200
 
 
+def test_generate_snapshots_pack_into_job_dir(agent_client, tmp_path):
+    # 任务自带剧本快照 → 即使源 yaml 日后丢失，动图/重摇/续生成仍可用
+    draft_id = agent_client.post(
+        "/api/agent/chat", data={"message": "随便"}
+    ).json()["draft_id"]
+    agent_client.post("/api/agent/draft", data={"draft_id": draft_id})
+    resp = agent_client.post(
+        "/api/generate",
+        files={"selfie": ("me.jpg", _selfie_bytes(), "image/jpeg")},
+        data={"pack_id": "dingzhi"},
+    )
+    job_id = resp.json()["job_id"]
+    _wait_done(agent_client, job_id)
+
+    from mememe.core.schema import load_pack
+
+    snapshot = tmp_path / job_id / "pack.yaml"
+    assert snapshot.exists()
+    assert load_pack(snapshot).id == "dingzhi"
+
+
+def test_custom_pack_job_animates_after_pack_file_lost(agent_client, tmp_path):
+    # 复现生产事故：用户的私有定制剧本从 packs/custom 消失后，重启仍要能转动图
+    draft_id = agent_client.post(
+        "/api/agent/chat", data={"message": "随便"}
+    ).json()["draft_id"]
+    agent_client.post("/api/agent/draft", data={"draft_id": draft_id})
+    resp = agent_client.post(
+        "/api/generate",
+        files={"selfie": ("me.jpg", _selfie_bytes(), "image/jpeg")},
+        data={"pack_id": "dingzhi"},
+    )
+    job_id = resp.json()["job_id"]
+    _wait_done(agent_client, job_id)
+
+    (webapp.CUSTOM_PACKS_DIR / "dingzhi.yaml").unlink()  # 剧本文件丢失
+
+    fresh = TestClient(webapp.create_app())  # 重启：从磁盘重建任务
+    job = fresh.get(f"/api/jobs/{job_id}").json()
+    assert job["pack_name"]
+
+    resp = fresh.post(f"/api/jobs/{job_id}/animate/1", data={"mode": "frames"})
+    assert resp.status_code == 200  # 旧实现：409「找不到该任务的剧本文件」
+
+
+def test_load_jobs_clears_stuck_anim_status(client, tmp_path):
+    # 重启时正在转的动图卡在 running → 不能永远显示「动图中」
+    import json as _json
+
+    job_id = _animated_job(client)
+    p = tmp_path / job_id / "job.json"
+    meta = _json.loads(p.read_text())
+    meta["images"][0]["anim_status"] = "running"
+    p.write_text(_json.dumps(meta, ensure_ascii=False))
+
+    fresh = TestClient(webapp.create_app())
+    job = fresh.get(f"/api/jobs/{job_id}").json()
+    assert job["images"][0]["anim_status"] == "error"
+
+
 def test_styles_endpoint(client):
     data = client.get("/api/styles").json()
     assert any(s["id"] == "bojack" for s in data["styles"])
