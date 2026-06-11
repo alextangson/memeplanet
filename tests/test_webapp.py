@@ -262,8 +262,9 @@ def test_platform_pack_includes_anim_gifs(client):
     assert "动图/02.gif" not in names
 
 
-def test_default_provider_is_seedream():
-    assert webapp.DEFAULT_PROVIDER == "seedream"
+def test_default_provider_is_gemini_relay():
+    # 中转站包月 → 主力；即梦按量计费只做兜底（用户成本决策）
+    assert webapp.DEFAULT_PROVIDER == "gemini"
 
 
 def test_generation_falls_back_per_image_on_primary_failure(client, tmp_path, monkeypatch):
@@ -457,9 +458,9 @@ def test_frames_falls_back_to_other_provider(client, tmp_path, monkeypatch):
         def generate(self, prompt: str, reference: bytes) -> bytes:
             raise RuntimeError("relay 500")
 
-    # 默认主力即梦失败 → 回退 gemini（good）补上
+    # 默认主力 gemini 失败 → 回退 seedream（good）补上
     def factory(name: str = ""):
-        return good if name == "gemini" else FailingProvider()
+        return good if name == "seedream" else FailingProvider()
 
     job_id = _animated_job(client)  # generated with the original fixture provider
     monkeypatch.setattr(webapp, "_make_provider", factory)

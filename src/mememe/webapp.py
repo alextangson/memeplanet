@@ -50,7 +50,8 @@ MAX_UPLOAD_BYTES = 12 * 1024 * 1024  # 单张上传上限，挡 OOM-by-upload
 ADMIN_KEY = os.environ.get("MEMEME_ADMIN_KEY", "")  # 设了才开后台；/admin?key=
 MAX_CONCURRENT_GENERATIONS = int(os.environ.get("MEMEME_MAX_CONCURRENT", "3"))
 _GEN_SLOTS = threading.Semaphore(MAX_CONCURRENT_GENERATIONS)
-DEFAULT_PROVIDER = os.environ.get("MEMEME_PROVIDER", "seedream")  # 即梦主力，省钱
+# 中转站 Gemini 主力（包月边际成本低）；即梦按量 ¥0.2/张 做每张自动兜底
+DEFAULT_PROVIDER = os.environ.get("MEMEME_PROVIDER", "gemini")
 GEN_FANOUT = int(os.environ.get("MEMEME_GEN_FANOUT", "4"))  # 单任务内并发出图张数
 
 
