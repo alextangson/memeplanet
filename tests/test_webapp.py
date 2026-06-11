@@ -241,6 +241,25 @@ def test_history_endpoint_lists_jobs(client):
     assert items[0]["pack_name"]
 
 
+def test_events_endpoint_appends_jsonl(client, tmp_path, monkeypatch):
+    import json as _json
+
+    monkeypatch.setattr(webapp, "EVENTS_FILE", tmp_path / "events.jsonl")
+    r = client.post("/api/events", data={"name": "unlock_shown", "job_id": "abc"})
+    assert r.status_code == 200
+    r = client.post("/api/events", data={"name": "unlock_free_click"})
+    assert r.status_code == 200
+
+    lines = (tmp_path / "events.jsonl").read_text().strip().splitlines()
+    assert len(lines) == 2
+    first = _json.loads(lines[0])
+    assert first["name"] == "unlock_shown"
+    assert first["job_id"] == "abc"
+    assert first["ts"] > 0
+
+    assert client.post("/api/events", data={"name": "bad name!"}).status_code == 422
+
+
 def test_failed_job_with_no_images_hidden_from_history(client, monkeypatch):
     class FailingProvider:
         def generate(self, prompt: str, reference: bytes) -> bytes:

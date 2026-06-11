@@ -7,6 +7,7 @@ written to disk and vanishes when the server stops.
 import importlib.util
 import json
 import os
+import re
 
 import yaml
 import threading
@@ -35,6 +36,7 @@ from mememe.providers.base import ImageProvider
 
 OUTPUT_ROOT = Path("out/web")
 LEADS_FILE = Path("out/leads.jsonl")
+EVENTS_FILE = Path("out/events.jsonl")  # 转化漏斗埋点（unlock_shown/unlock_free_click）
 PACKS_DIR = Path(os.environ.get("MEMEME_PACKS_DIR", "packs"))
 CUSTOM_PACKS_DIR = Path(os.environ.get("MEMEME_CUSTOM_PACKS_DIR", "packs/custom"))
 DEFAULT_QR_URL = "https://github.com/alextangson/memeplanet"
@@ -406,6 +408,18 @@ def create_app() -> FastAPI:
             "preview_url": f"/api/pack-preview/{pack.id}" if has_preview else "",
             "custom": is_custom,
         }
+
+    @app.post("/api/events")
+    def events(name: str = Form(...), job_id: str = Form("")) -> dict:
+        if not re.fullmatch(r"[a-z0-9_]{1,64}", name):
+            raise HTTPException(422, "bad event name")
+        EVENTS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with EVENTS_FILE.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(
+                {"name": name, "job_id": job_id, "ts": time.time()},
+                ensure_ascii=False,
+            ) + "\n")
+        return {"ok": True}
 
     @app.get("/api/packs")
     def list_packs() -> list[dict]:

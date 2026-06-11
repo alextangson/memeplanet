@@ -177,9 +177,16 @@
   footer.site a { color: var(--ink-2); text-decoration: none; }
   footer.site a:hover { color: var(--accent); }
 
-  dialog#styleDlg { border: 2px solid var(--ink); border-radius: var(--r); padding: 20px; width: min(92vw, 380px); }
-  dialog#styleDlg::backdrop { background: rgba(26,21,5,.4); }
-  dialog#styleDlg h3 { font-size: 15px; margin-bottom: 10px; }
+  dialog { margin: auto; } /* 页面 margin reset 会让 dialog 钉死左上角 */
+  dialog#styleDlg, dialog#unlockDlg { border: 2px solid var(--ink); border-radius: var(--r); padding: 20px; width: min(92vw, 380px); }
+  dialog#styleDlg::backdrop, dialog#unlockDlg::backdrop { background: rgba(26,21,5,.4); }
+  dialog#styleDlg h3, dialog#unlockDlg h3 { font-size: 15px; margin-bottom: 10px; }
+  #unlockDlg .perks { list-style: none; margin: 0 0 12px; padding: 0; font-size: 14px; }
+  #unlockDlg .perks li { padding: 3px 0 3px 22px; position: relative; }
+  #unlockDlg .perks li::before { content: '✓'; position: absolute; left: 2px; font-weight: 800; color: var(--accent); }
+  #unlockDlg .price { margin: 0 0 14px; font-size: 14px; }
+  #unlockDlg .price s { color: #999; margin-right: 8px; }
+  #unlockDlg .price b { font-size: 20px; color: var(--accent); }
   dialog#ask { border: 2px solid var(--ink); border-radius: var(--r); padding: 20px; width: min(92vw, 380px); }
   dialog#ask::backdrop { background: rgba(26,21,5,.4); }
   dialog#ask h3 { font-size: 15px; margin-bottom: 12px; }
@@ -326,6 +333,20 @@
   <h3>换个画风，同一套梗再来一遍</h3>
   <div id="styleList" class="row" style="flex-direction:column;align-items:stretch;gap:8px;margin-top:4px"></div>
   <div class="row"><button class="btn" id="styleCancel">取消</button></div>
+</dialog>
+<dialog id="unlockDlg">
+  <h3>解锁全套 16 梗 🔓</h3>
+  <ul class="perks">
+    <li>剩下 8 个隐藏梗，集齐完整人设</li>
+    <li>全套透明底 PNG + 微信 GIF 双格式</li>
+    <li>可直接上架微信表情的素材包</li>
+  </ul>
+  <div class="price"><s>¥9.9</s><b>内测限免 ¥0</b></div>
+  <div class="row">
+    <button class="btn" id="unlockCancel">再想想</button>
+    <button class="btn primary" id="unlockGo">内测期免费解锁</button>
+  </div>
+  <p class="privacy" style="margin-top:10px">正式版 ¥9.9 · 内测期间免费</p>
 </dialog>
 <dialog id="ask">
   <h3 id="askTitle"></h3>
@@ -598,11 +619,22 @@ async function animate(index, mode, motion) {
   startPoll();
 }
 
-// ---- 解锁全套 ----
-$('unlockBtn').onclick = async () => {
-  $('unlockBtn').disabled = true;
+// ---- 解锁全套：先过付费意向卡（内测免费），埋点喂定价决策 ----
+function track(name) {
+  const fd = new FormData();
+  fd.append('name', name);
+  fd.append('job_id', jobId || '');
+  fetch('/api/events', { method: 'POST', body: fd }).catch(() => {});
+}
+
+$('unlockBtn').onclick = () => { track('unlock_shown'); $('unlockDlg').showModal(); };
+$('unlockCancel').onclick = () => $('unlockDlg').close();
+$('unlockGo').onclick = async () => {
+  track('unlock_free_click');
+  $('unlockGo').disabled = true;
   const resp = await fetch(`/api/jobs/${jobId}/extend`, { method: 'POST' });
-  $('unlockBtn').disabled = false;
+  $('unlockGo').disabled = false;
+  $('unlockDlg').close();
   if (!resp.ok) { showToast((await resp.json()).detail || '解锁失败'); return; }
   $('unlockZone').style.display = 'none';
   startPoll();
