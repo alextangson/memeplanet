@@ -2,8 +2,8 @@
 
 烧真实 API 额度——只在画风验证时手动运行，别挂 CI、别狂刷。
 用法:
-    .venv/bin/python experiments/style_samples.py              # 全部 7 个新画风
-    .venv/bin/python experiments/style_samples.py felt manga   # 只跑指定画风
+    .venv/bin/python experiments/style_samples.py              # 全部 6 个新画风
+    .venv/bin/python experiments/style_samples.py felt clay    # 只跑指定画风
 需要环境变量 ARK_API_KEY（用户自持，勿写进任何文件）。
 """
 
@@ -15,7 +15,7 @@ from mememe.core.schema import load_pack
 from mememe.providers.seedream import SeedreamProvider
 
 ROOT = Path(__file__).parent.parent
-NEW_STYLE_IDS = ["felt", "clay", "manga", "pop", "lineart", "crayon", "sticker"]
+NEW_STYLE_IDS = ["felt", "clay", "pop", "lineart", "crayon", "sticker"]
 # 固定验证 2 个梗，覆盖两类镜头：liekai=头肩特写、xiaban-chongci=全身
 MEME_INDEXES = [3, 7]
 

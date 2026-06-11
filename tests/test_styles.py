@@ -59,7 +59,7 @@ def test_explicit_caption_style_is_uniform():
     assert CAPTION_STYLES["bold"]["block"] in p0
 
 
-NEW_STYLE_IDS = ["felt", "clay", "manga", "pop", "lineart", "crayon", "sticker"]
+NEW_STYLE_IDS = ["felt", "clay", "pop", "lineart", "crayon", "sticker"]
 
 
 def test_new_styles_registered():
