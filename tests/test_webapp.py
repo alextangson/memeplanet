@@ -262,6 +262,41 @@ def test_platform_pack_includes_anim_gifs(client):
     assert "动图/02.gif" not in names
 
 
+def test_default_provider_is_seedream():
+    assert webapp.DEFAULT_PROVIDER == "seedream"
+
+
+def test_generation_falls_back_per_image_on_primary_failure(client, tmp_path, monkeypatch):
+    good = FakeProvider()
+
+    class FlakyPrimary:
+        def __init__(self):
+            self.n = 0
+
+        def generate(self, prompt, reference):
+            self.n += 1
+            if self.n in (2, 5):  # 第 2、5 张主力翻车
+                raise RuntimeError("seedream 500")
+            return good.generate(prompt, reference)
+
+    primary = FlakyPrimary()
+
+    def factory(name=""):
+        return good if name == "gemini" else primary
+
+    monkeypatch.setattr(webapp, "_make_provider", factory)
+    monkeypatch.setattr(webapp, "_fallback_image_provider", lambda n: good)
+
+    resp = client.post(
+        "/api/generate",
+        files={"selfie": ("me.jpg", _selfie_bytes(), "image/jpeg")},
+        data={"pack_id": "shechu"},
+    )
+    job = _wait_done(client, resp.json()["job_id"])
+    assert job["status"] == "done"
+    assert all(img["status"] == "done" for img in job["images"])  # 失败的两张靠 fallback 补上
+
+
 def test_admin_disabled_without_key(client, monkeypatch):
     monkeypatch.setattr(webapp, "ADMIN_KEY", "")
     assert client.get("/admin").status_code == 404
@@ -415,8 +450,9 @@ def test_frames_falls_back_to_other_provider(client, tmp_path, monkeypatch):
         def generate(self, prompt: str, reference: bytes) -> bytes:
             raise RuntimeError("relay 500")
 
+    # 默认主力即梦失败 → 回退 gemini（good）补上
     def factory(name: str = ""):
-        return good if name == "seedream" else FailingProvider()
+        return good if name == "gemini" else FailingProvider()
 
     job_id = _animated_job(client)  # generated with the original fixture provider
     monkeypatch.setattr(webapp, "_make_provider", factory)

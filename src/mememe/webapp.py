@@ -9,6 +9,7 @@ import hmac
 import json
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor
 
 import yaml
 import threading
@@ -49,6 +50,8 @@ MAX_UPLOAD_BYTES = 12 * 1024 * 1024  # 单张上传上限，挡 OOM-by-upload
 ADMIN_KEY = os.environ.get("MEMEME_ADMIN_KEY", "")  # 设了才开后台；/admin?key=
 MAX_CONCURRENT_GENERATIONS = int(os.environ.get("MEMEME_MAX_CONCURRENT", "3"))
 _GEN_SLOTS = threading.Semaphore(MAX_CONCURRENT_GENERATIONS)
+DEFAULT_PROVIDER = os.environ.get("MEMEME_PROVIDER", "seedream")  # 即梦主力，省钱
+GEN_FANOUT = int(os.environ.get("MEMEME_GEN_FANOUT", "4"))  # 单任务内并发出图张数
 
 
 def _make_scriptwriter():
@@ -92,7 +95,7 @@ def _find_pack_path(pack_id: str) -> Path | None:
 
 
 def _make_provider(name: str = "") -> ImageProvider:
-    name = name or os.environ.get("MEMEME_PROVIDER", "gemini")
+    name = name or DEFAULT_PROVIDER
     if name == "seedream":
         from mememe.providers.seedream import SeedreamProvider
 
@@ -103,8 +106,9 @@ def _make_provider(name: str = "") -> ImageProvider:
 
 
 def _fallback_image_provider(name: str) -> ImageProvider | None:
-    """拼帧编辑对上游错误敏感（中转 500 等）；失败时换另一家试一次。"""
-    other = "seedream" if (name or "gemini") == "gemini" else "gemini"
+    """主力上游翻车（即梦 429/中转 500 等）时换另一家试一次。"""
+    primary = name or DEFAULT_PROVIDER
+    other = "gemini" if primary == "seedream" else "seedream"
     try:
         return _make_provider(other)
     except Exception:
@@ -233,28 +237,49 @@ def _rebuild_collage(job: Job) -> None:
     job.collage_url = f"/files/{job.id}/collage.png"
 
 
-def _run_generation(job: Job, provider: ImageProvider) -> None:
+def _generate_one(job: Job, provider: ImageProvider, pos: int) -> None:
+    """生成单张：主力上游失败时自动换另一家补一次，不连累整套。"""
+    index = pos + 1
+    meme = job.pack.memes[pos]
+    prompt = compile_meme(
+        job.pack, meme, style=job.style, caption_style=job.caption_style
+    )
+    with job.lock:
+        job.images[pos]["status"] = "running"
     try:
-        for pos, meme in enumerate(job.memes):
-            index = pos + 1
-            with job.lock:
-                job.images[pos]["status"] = "running"
-            raw = provider.generate(
-                compile_meme(
-                    job.pack, meme, style=job.style, caption_style=job.caption_style
-                ),
-                job.selfie,
-            )
-            _write_one(job, index, raw)
-            with job.lock:
-                job.images[pos]["status"] = "done"
-                job.images[pos]["url"] = f"/files/{job.id}/{_sticker_stem(job, index)}.png"
-                job.images[pos]["gif_url"] = f"/files/{job.id}/{_sticker_stem(job, index)}.gif"
-        _rebuild_collage(job)
-        job.status = "done"
-    except Exception as e:  # surface, don't swallow — UI shows it
-        job.status = "error"
+        try:
+            raw = provider.generate(prompt, job.selfie)
+        except Exception:
+            fallback = _fallback_image_provider(job.provider_name)
+            if fallback is None:
+                raise
+            raw = fallback.generate(prompt, job.selfie)
+        _write_one(job, index, raw)
+        with job.lock:
+            job.images[pos]["status"] = "done"
+            job.images[pos]["url"] = f"/files/{job.id}/{_sticker_stem(job, index)}.png"
+            job.images[pos]["gif_url"] = f"/files/{job.id}/{_sticker_stem(job, index)}.gif"
+    except Exception as e:  # 单张失败只记这张，其余照常；用户可重摇
+        with job.lock:
+            job.images[pos]["status"] = "error"
         job.error = str(e)
+
+
+def _generate_batch(job: Job, provider: ImageProvider, positions: list[int]) -> None:
+    """有界并发出图：快但不撞上游限流、不撑爆小内存。逐张完成、逐张揭晓。"""
+    with ThreadPoolExecutor(max_workers=GEN_FANOUT) as pool:
+        list(pool.map(lambda pos: _generate_one(job, provider, pos), positions))
+
+
+def _any_done(job: Job) -> bool:
+    return any(i["status"] == "done" for i in job.images)
+
+
+def _run_generation(job: Job, provider: ImageProvider) -> None:
+    _generate_batch(job, provider, list(range(len(job.memes))))
+    _rebuild_collage(job)
+    # 出了几张就算成功（单张错误可重摇）；一张都没出才算整套失败
+    job.status = "done" if _any_done(job) else "error"
     _save_meta(job)
 
 
@@ -315,27 +340,8 @@ def _run_animate(
 
 
 def _run_extend(job: Job, provider: ImageProvider) -> None:
-    try:
-        for pos in range(8, len(job.pack.memes)):
-            index = pos + 1
-            meme = job.pack.memes[pos]
-            with job.lock:
-                job.images[pos]["status"] = "running"
-            raw = provider.generate(
-                compile_meme(
-                    job.pack, meme, style=job.style, caption_style=job.caption_style
-                ),
-                job.selfie,
-            )
-            _write_one(job, index, raw)
-            with job.lock:
-                job.images[pos]["status"] = "done"
-                job.images[pos]["url"] = f"/files/{job.id}/{_sticker_stem(job, index)}.png"
-                job.images[pos]["gif_url"] = f"/files/{job.id}/{_sticker_stem(job, index)}.gif"
-        job.status = "done"
-    except Exception as e:
-        job.status = "error"
-        job.error = str(e)
+    _generate_batch(job, provider, list(range(8, len(job.pack.memes))))
+    job.status = "done" if _any_done(job) else "error"
     _save_meta(job)
 
 
