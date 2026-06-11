@@ -41,7 +41,8 @@ class DeepSeekChat:
             f"{self._base_url}/chat/completions",
             headers={"Authorization": f"Bearer {self._api_key}"},
             json=build_chat_payload(messages, model=self._model, json_mode=json_mode),
-            timeout=180, trust_env=False,
+            # happy path ~24s；90s 读超时给慢响应留余量又不至于挂死（原 180s 太长）
+            timeout=httpx.Timeout(90.0, connect=10.0), trust_env=False,
         )
         try:
             data = resp.json()

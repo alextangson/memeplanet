@@ -240,7 +240,7 @@ async function agentSend() {
   fd.append('message', text);
   if (agentDraftId) fd.append('draft_id', agentDraftId);
   try {
-    const resp = await fetch('/api/agent/chat', { method: 'POST', body: fd });
+    const resp = await fetchWithProgress('/api/agent/chat', fd, busy, '策划思考中…', 60000);
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.detail || resp.status);
     agentDraftId = data.draft_id;
@@ -248,19 +248,37 @@ async function agentSend() {
     setBub(busy, data.reply, 'ai');
   } catch (e) {
     busy.className = 'bub ai';
-    busy.textContent = '出错了：' + e.message;
+    busy.textContent = e.name === 'AbortError'
+      ? '策划这次没接上话，网络可能不稳，再说一遍试试～'
+      : '出错了：' + (e.message || e);
   }
   $('agentSend').disabled = false;
 }
 
+// 带超时+实时计时的请求：永不让用户对着不动的气泡干等
+async function fetchWithProgress(url, fd, busy, label, timeoutMs) {
+  const t0 = Date.now();
+  const tick = setInterval(() => {
+    busy.textContent = `${label}（已等 ${Math.round((Date.now() - t0) / 1000)}s）`;
+  }, 1000);
+  const ctrl = new AbortController();
+  const killer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    return await fetch(url, { method: 'POST', body: fd, signal: ctrl.signal });
+  } finally {
+    clearInterval(tick);
+    clearTimeout(killer);
+  }
+}
+
 async function agentMakeDraft() {
   if (!agentDraftId) { bubble('先说说你的需求，聊一两句我才好出方案～', 'ai'); return; }
-  const busy = bubble('正在写剧本（约 20 秒）…', 'ai busy');
+  const busy = bubble('正在写剧本，约 20–40 秒…', 'ai busy');
   $('agentDraft').disabled = true;
   const fd = new FormData();
   fd.append('draft_id', agentDraftId);
   try {
-    const resp = await fetch('/api/agent/draft', { method: 'POST', body: fd });
+    const resp = await fetchWithProgress('/api/agent/draft', fd, busy, '正在写剧本，约 20–40 秒…', 95000);
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.detail || resp.status);
     busy.className = 'bub ai';
@@ -270,7 +288,10 @@ async function agentMakeDraft() {
     $('gotobar').style.display = 'flex';
   } catch (e) {
     busy.className = 'bub ai';
-    busy.textContent = '生成失败：' + e.message;
+    busy.textContent = e.name === 'AbortError'
+      ? '策划这次想太久了（可能网络不稳），再点一次「生成剧本」试试～'
+      : '生成失败：' + (e.message || e);
+    report('draft_fail', e.name === 'AbortError' ? 'timeout 95s' : (e.message || e));
   }
   $('agentDraft').disabled = false;
 }
