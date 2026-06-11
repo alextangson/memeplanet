@@ -32,6 +32,20 @@ def test_collage_handles_long_pack_name():
     assert (img.width, img.height) == (1080, 1440)
 
 
+def test_display_url_strips_scheme_and_slash():
+    from mememe.core.collage import _display_url
+
+    assert _display_url("https://meme-planet.com/") == "meme-planet.com"
+    assert _display_url("http://meme-planet.com") == "meme-planet.com"
+
+
+def test_collage_renders_url_text():
+    # 不同网址渲染出不同像素 → 网址是画出来的明文（小红书可发，无二维码）
+    a = build_collage(_eight_stickers(), pack_name="社畜的一天", qr_url="https://meme-planet.com/")
+    b = build_collage(_eight_stickers(), pack_name="社畜的一天", qr_url="https://other-domain.com/")
+    assert a != b
+
+
 def test_collage_requires_exactly_eight_stickers():
     with pytest.raises(ValueError, match="8"):
         build_collage(_eight_stickers()[:5], pack_name="x", qr_url="https://e.com")

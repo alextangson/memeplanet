@@ -1,14 +1,14 @@
 """品牌贴纸海报风合集晒图卡 — the only attributed artifact in the whole product.
 
-8 stickers + QR in a 3×3 scatter on punchy yellow. Singles stay clean; this
-card is what users post to Moments/小红书, and the QR is the remix entry point
-(DESIGN.md premise 4). Everything is deterministic: same input, same bytes.
+8 stickers + a brand CTA tile in a 3×3 scatter on punchy yellow; the site URL
+is printed in plain text at the bottom. No QR code: 小红书 shadowbans notes
+that contain QR codes, and this card is meant to be posted there directly.
+Everything is deterministic: same input, same bytes.
 """
 
 import io
 from pathlib import Path
 
-import qrcode
 from PIL import Image, ImageDraw
 
 from mememe.core.fonts import cjk_font as _font
@@ -19,7 +19,6 @@ ORANGE = (240, 83, 30, 255)
 INK = (26, 21, 5, 255)
 WHITE = (255, 255, 255, 255)
 TAGLINE = "换上你的脸，30秒出同款"
-BRAND = "表情星球 · memeplanet"
 
 CELL = 330
 GRID_X, GRID_Y = 45, 270
@@ -38,21 +37,21 @@ def _paste_with_shadow(canvas: Image.Image, layer: Image.Image, xy: tuple[int, i
     canvas.paste(layer, xy, layer)
 
 
-def _qr_sticker(url: str) -> Image.Image:
-    """白底圆角贴纸：扫码换你的脸 + 二维码。"""
+def _display_url(url: str) -> str:
+    """链接 → 可读域名：https://meme-planet.com/ → meme-planet.com。"""
+    return url.split("://", 1)[-1].rstrip("/")
+
+
+def _cta_sticker() -> Image.Image:
+    """白底圆角贴纸：行星 logo + 「做你的同款」钩子（替代二维码，小红书可发）。"""
     tile = Image.new("RGBA", (STICKER, STICKER), (0, 0, 0, 0))
     draw = ImageDraw.Draw(tile)
     draw.rounded_rectangle((4, 4, STICKER - 4, STICKER - 4), radius=30, fill=WHITE, outline=INK, width=5)
-    label = "扫码换你的脸"
+    tile.alpha_composite(_brand_logo(150), ((STICKER - 150) // 2, 42))
+    label = "做你的同款 →"
     font = _font(30)
     tw = draw.textlength(label, font=font)
-    draw.text(((STICKER - tw) // 2, 24), label, fill=INK, font=font)
-    qr = qrcode.QRCode(border=1)
-    qr.add_data(url)
-    qr.make(fit=True)
-    img = qr.make_image(fill_color="black", back_color="white").convert("RGBA")
-    img = img.resize((190, 190), Image.NEAREST)
-    tile.paste(img, ((STICKER - 190) // 2, 72))
+    draw.text(((STICKER - tw) // 2, 212), label, fill=INK, font=font)
     return tile
 
 
@@ -149,7 +148,7 @@ def build_collage(stickers: list[bytes], *, pack_name: str, qr_url: str) -> byte
     plaque = _name_plaque(pack_name).rotate(2.5, resample=Image.BICUBIC, expand=True)
     _paste_with_shadow(canvas, plaque, ((W - plaque.width) // 2, 152))
 
-    # 3×3 散落区：8 张贴纸 + QR 贴纸
+    # 3×3 散落区：8 张贴纸 + 品牌钩子贴纸（第 9 格，无二维码）
     tiles = []
     for s in stickers:
         tile = Image.open(io.BytesIO(s)).convert("RGBA")
@@ -158,7 +157,7 @@ def build_collage(stickers: list[bytes], *, pack_name: str, qr_url: str) -> byte
             tiles.append(_fit(tile, STICKER))
         else:
             tiles.append(_frame_sticker(_fit(tile, STICKER - 24)))
-    tiles.append(_qr_sticker(qr_url))
+    tiles.append(_cta_sticker())
     for i, tile in enumerate(tiles):
         rotated = tile.rotate(ROTATIONS[i], resample=Image.BICUBIC, expand=True)
         col, row = i % 3, i // 3
@@ -167,14 +166,16 @@ def build_collage(stickers: list[bytes], *, pack_name: str, qr_url: str) -> byte
         y = GRID_Y + row * CELL + (CELL - rotated.height) // 2 + jy
         _paste_with_shadow(canvas, rotated, (x, y))
 
-    # 底部：标语 + 品牌名
+    # 底部：标语 + 明文网址（无二维码，小红书可直接发）
     font = _font(44)
     tw = draw.textlength(TAGLINE, font=font)
-    draw.text(((W - tw) // 2, 1294), TAGLINE, fill=INK, font=font,
+    draw.text(((W - tw) // 2, 1286), TAGLINE, fill=INK, font=font,
               stroke_width=6, stroke_fill=WHITE)
-    font = _font(26)
-    tw = draw.textlength(BRAND, font=font)
-    draw.text(((W - tw) // 2, 1372), BRAND, fill=(120, 100, 30, 255), font=font)
+    site = _display_url(qr_url)
+    font = _font(36)
+    tw = draw.textlength(site, font=font)
+    draw.text(((W - tw) // 2, 1366), site, fill=ORANGE, font=font,
+              stroke_width=5, stroke_fill=WHITE)
 
     buf = io.BytesIO()
     canvas.convert("RGB").save(buf, format="PNG", optimize=True)
