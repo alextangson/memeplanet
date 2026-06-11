@@ -64,3 +64,32 @@ def test_provider_default_has_no_base_url_override(monkeypatch):
 
     GeminiProvider()
     assert "http_options" not in captured
+
+
+def test_generate_passes_square_image_config(monkeypatch):
+    captured = {}
+
+    class FakeModels:
+        def generate_content(self, **kwargs):
+            captured.update(kwargs)
+            from types import SimpleNamespace
+
+            part = SimpleNamespace(
+                text=None,
+                inline_data=SimpleNamespace(data=b"IMG", mime_type="image/png"),
+            )
+            content = SimpleNamespace(parts=[part])
+            return SimpleNamespace(candidates=[SimpleNamespace(content=content)])
+
+    class FakeClient:
+        def __init__(self, **kwargs):
+            self.models = FakeModels()
+
+    import google.genai
+
+    monkeypatch.setattr(google.genai, "Client", FakeClient)
+    from biaoqingbao.providers.gemini import GeminiProvider
+
+    out = GeminiProvider().generate("prompt", b"ref")
+    assert out == b"IMG"
+    assert captured["config"].image_config.aspect_ratio == "1:1"

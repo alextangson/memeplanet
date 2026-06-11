@@ -12,6 +12,9 @@ _PROMPT_TEMPLATE = """\
 【人物一致性】人物必须与参考照片中是同一个人：保持发型、脸型、肤色、眼镜/配饰等
 标志性特征，整套表情包中角色形象完全一致。
 
+【画幅】正方形 1:1。只保留人物角色与文案，绝对不要保留或重绘参考照片的背景，
+背景必须是纯白色。
+
 【全局风格】
 {style}
 
@@ -23,13 +26,13 @@ _PROMPT_TEMPLATE = """\
 """
 
 
-def compile_meme(pack: Pack, meme: Meme) -> str:
+def compile_meme(pack: Pack, meme: Meme, caption_override: str | None = None) -> str:
     return _PROMPT_TEMPLATE.format(
         style=pack.style.strip(),
         expression=meme.expression,
         action=meme.action,
         shot=meme.shot,
-        caption=meme.caption,
+        caption=caption_override or meme.caption,
     )
 
 

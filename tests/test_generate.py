@@ -59,3 +59,11 @@ def test_regenerate_targets_single_meme_by_index():
     regenerate(pack, REF, provider, index=4)
     assert len(provider.calls) == 1
     assert pack.memes[3].caption in provider.calls[0][0]  # index is 1-based
+
+
+def test_regenerate_with_caption_override():
+    pack = load_pack(PACKS_DIR / "shechu.yaml")
+    provider = FakeProvider()
+    regenerate(pack, REF, provider, index=1, caption="老板再见")
+    assert "老板再见" in provider.calls[0][0]
+    assert pack.memes[0].caption not in provider.calls[0][0]

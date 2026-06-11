@@ -29,7 +29,12 @@ PACKS_DIR = Path(os.environ.get("BIAOQINGBAO_PACKS_DIR", "packs"))
 DEFAULT_QR_URL = "https://github.com/REPLACE-ME/biaoqingbao"
 
 
-def _make_provider() -> ImageProvider:
+def _make_provider(name: str = "") -> ImageProvider:
+    name = name or os.environ.get("BIAOQINGBAO_PROVIDER", "gemini")
+    if name == "seedream":
+        from biaoqingbao.providers.seedream import SeedreamProvider
+
+        return SeedreamProvider()
     from biaoqingbao.providers.gemini import GeminiProvider
 
     return GeminiProvider()
@@ -46,6 +51,7 @@ class Job:
     selfie: bytes
     out_dir: Path
     full: bool
+    provider_name: str = ""
     status: str = "running"
     error: str = ""
     images: list[dict] = field(default_factory=list)
@@ -100,11 +106,14 @@ def _run_generation(job: Job, provider: ImageProvider) -> None:
         job.error = str(e)
 
 
-def _run_retry(job: Job, provider: ImageProvider, index: int) -> None:
+def _run_retry(
+    job: Job, provider: ImageProvider, index: int, caption: str | None = None
+) -> None:
     pos = index - 1
     try:
         meme = job.pack.memes[pos]
-        raw = provider.generate(compile_meme(job.pack, meme), job.selfie)
+        prompt = compile_meme(job.pack, meme, caption_override=caption)
+        raw = provider.generate(prompt, job.selfie)
         _write_one(job, index, raw)
         with job.lock:
             job.images[pos]["status"] = "done"
@@ -159,6 +168,7 @@ def create_app() -> FastAPI:
         selfie: UploadFile = File(...),
         pack_id: str = Form(...),
         full: bool = Form(False),
+        provider: str = Form(""),
     ) -> dict:
         pack_path = PACKS_DIR / f"{pack_id}.yaml"
         if not pack_path.exists():
@@ -173,6 +183,7 @@ def create_app() -> FastAPI:
             selfie=selfie.file.read(),
             out_dir=out_dir,
             full=full,
+            provider_name=provider,
         )
         job.images = [
             {"index": i + 1, "id": m.id, "caption": m.caption, "status": "pending", "url": "", "gif_url": ""}
@@ -180,7 +191,7 @@ def create_app() -> FastAPI:
         ]
         jobs[job_id] = job
         threading.Thread(
-            target=_run_generation, args=(job, _make_provider()), daemon=True
+            target=_run_generation, args=(job, _make_provider(provider)), daemon=True
         ).start()
         return {"job_id": job_id}
 
@@ -192,7 +203,7 @@ def create_app() -> FastAPI:
         return _job_json(job)
 
     @app.post("/api/jobs/{job_id}/retry/{index}")
-    def retry(job_id: str, index: int) -> dict:
+    def retry(job_id: str, index: int, caption: str = Form("")) -> dict:
         job = jobs.get(job_id)
         if job is None:
             raise HTTPException(404, "job not found")
@@ -204,7 +215,9 @@ def create_app() -> FastAPI:
             job.status = "running"
             job.images[index - 1]["status"] = "running"
         threading.Thread(
-            target=_run_retry, args=(job, _make_provider(), index), daemon=True
+            target=_run_retry,
+            args=(job, _make_provider(job.provider_name), index, caption or None),
+            daemon=True,
         ).start()
         return {"job_id": job_id}
 
@@ -281,9 +294,17 @@ _INDEX_HTML = """<!DOCTYPE html>
   </div>
 
   <div class="card">
+    <div class="row" style="margin-bottom:10px">
+      <label class="toggle">模型：
+        <select id="prov">
+          <option value="gemini">Gemini（中转）</option>
+          <option value="seedream">即梦 Seedream</option>
+        </select>
+      </label>
+      <label class="toggle"><input type="checkbox" id="full"> 全套16张</label>
+    </div>
     <div class="row">
       <button class="go" id="go" disabled>生成我的表情包</button>
-      <label class="toggle"><input type="checkbox" id="full"> 全套16张</label>
     </div>
     <div class="err" id="err"></div>
   </div>
@@ -332,6 +353,7 @@ $('go').onclick = async () => {
   fd.append('selfie', selfie);
   fd.append('pack_id', packId);
   fd.append('full', $('full').checked);
+  fd.append('provider', $('prov').value);
   const resp = await fetch('/api/generate', { method: 'POST', body: fd });
   if (!resp.ok) { $('err').textContent = await resp.text(); $('go').disabled = false; return; }
   jobId = (await resp.json()).job_id;
@@ -381,9 +403,13 @@ function render(job) {
 }
 
 async function retry(index) {
+  const text = prompt('想换的文案？留空保持原文案（也可以只重摇不改字）', '');
+  if (text === null) return;
   const cell = $('cell-' + index);
   cell.innerHTML = '<div class="spin"></div>';
-  await fetch(`/api/jobs/${jobId}/retry/${index}`, { method: 'POST' });
+  const fd = new FormData();
+  if (text.trim()) fd.append('caption', text.trim());
+  await fetch(`/api/jobs/${jobId}/retry/${index}`, { method: 'POST', body: fd });
   timer = setInterval(poll, 800);
 }
 </script>

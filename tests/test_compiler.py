@@ -35,3 +35,18 @@ def test_prompt_demands_identity_from_reference_photo():
     prompts = compile_pack(pack)
     for prompt in prompts:
         assert "参考照片" in prompt
+
+
+def test_prompt_demands_square_aspect():
+    pack = load_pack(PACKS_DIR / "shechu.yaml")
+    for prompt in compile_pack(pack):
+        assert "1:1" in prompt
+
+
+def test_caption_override_replaces_text():
+    from biaoqingbao.core.compiler import compile_meme
+
+    pack = load_pack(PACKS_DIR / "shechu.yaml")
+    prompt = compile_meme(pack, pack.memes[0], caption_override="老板再见")
+    assert "老板再见" in prompt
+    assert pack.memes[0].caption not in prompt

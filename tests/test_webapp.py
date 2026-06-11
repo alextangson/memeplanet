@@ -11,7 +11,11 @@ import biaoqingbao.webapp as webapp  # noqa: E402
 
 
 class FakeProvider:
+    def __init__(self):
+        self.prompts: list[str] = []
+
     def generate(self, prompt: str, reference: bytes) -> bytes:
+        self.prompts.append(prompt)
         img = Image.new("RGBA", (300, 300), (255, 100, 0, 255))
         buf = io.BytesIO()
         img.save(buf, format="PNG")
@@ -20,9 +24,19 @@ class FakeProvider:
 
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
-    monkeypatch.setattr(webapp, "_make_provider", lambda: FakeProvider())
+    provider = FakeProvider()
+    provider_calls: list[str] = []
+
+    def factory(name: str = ""):
+        provider_calls.append(name)
+        return provider
+
+    monkeypatch.setattr(webapp, "_make_provider", factory)
     monkeypatch.setattr(webapp, "OUTPUT_ROOT", tmp_path)
-    return TestClient(webapp.create_app())
+    c = TestClient(webapp.create_app())
+    c.fake_provider = provider
+    c.provider_calls = provider_calls
+    return c
 
 
 def _selfie_bytes() -> bytes:
@@ -91,3 +105,27 @@ def test_retry_single_image(client):
 
 def test_unknown_job_404(client):
     assert client.get("/api/jobs/nope").status_code == 404
+
+
+def test_generate_passes_provider_choice(client):
+    client.post(
+        "/api/generate",
+        files={"selfie": ("me.jpg", _selfie_bytes(), "image/jpeg")},
+        data={"pack_id": "shechu", "provider": "seedream"},
+    )
+    assert client.provider_calls[-1] == "seedream"
+
+
+def test_retry_with_custom_caption(client):
+    resp = client.post(
+        "/api/generate",
+        files={"selfie": ("me.jpg", _selfie_bytes(), "image/jpeg")},
+        data={"pack_id": "shechu"},
+    )
+    job_id = resp.json()["job_id"]
+    _wait_done(client, job_id)
+
+    resp = client.post(f"/api/jobs/{job_id}/retry/1", data={"caption": "老板再见"})
+    assert resp.status_code == 200
+    _wait_done(client, job_id)
+    assert any("老板再见" in p for p in client.fake_provider.prompts)

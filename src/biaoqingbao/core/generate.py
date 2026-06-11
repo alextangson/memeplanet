@@ -28,10 +28,15 @@ def generate_set(
 
 
 def regenerate(
-    pack: Pack, reference: bytes, provider: ImageProvider, *, index: int
+    pack: Pack,
+    reference: bytes,
+    provider: ImageProvider,
+    *,
+    index: int,
+    caption: str | None = None,
 ) -> bytes:
     """Reroll one sticker. index is 1-based, matching CLI output filenames."""
     if not 1 <= index <= len(pack.memes):
         raise ValueError(f"index must be 1..{len(pack.memes)}, got {index}")
     meme = pack.memes[index - 1]
-    return provider.generate(compile_meme(pack, meme), reference)
+    return provider.generate(compile_meme(pack, meme, caption_override=caption), reference)

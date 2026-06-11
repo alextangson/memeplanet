@@ -48,5 +48,8 @@ class GeminiProvider:
                 types.Part.from_bytes(data=reference, mime_type="image/jpeg"),
                 prompt,
             ],
+            config=types.GenerateContentConfig(
+                image_config=types.ImageConfig(aspect_ratio="1:1")
+            ),
         )
         return extract_image_bytes(response)

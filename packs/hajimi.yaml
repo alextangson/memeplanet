@@ -1,0 +1,113 @@
+# 哈基米 — 猫系拟猫化人设。前 8 个为免费层。
+
+id: hajimi
+name: 哈基米
+description: 把你变成一只猫系小动物，16 个猫味十足的日常反应
+version: 1
+language: zh
+
+style: |
+  Q版三头身（chibi）贴纸插画风格，粗白色描边，背景必须纯白。
+  人物拟猫化：头顶猫耳、身后猫尾、手作猫爪状，但五官、发型、眼镜等
+  必须保留参考照片中人物的标志性特征，一眼能认出是同一个人。
+  奶呼呼的猫系氛围，表情夸张可爱，微信表情包审美。
+  文案以大号中文手写体渲染在画面下方居中，字色深、带白边，清晰可读。
+
+memes:
+  # ---- 免费层（前 8 个）----
+  - id: hajimi
+    caption: 哈基米～
+    expression: 眼睛亮晶晶，开心到眯眼
+    action: 双爪举高高，尾巴竖直
+    shot: 全身
+
+  - id: miao-wenhao
+    caption: 喵喵喵？
+    expression: 满头问号，歪头疑惑
+    action: 歪头 45 度，一只爪子举在嘴边
+    shot: 头肩特写
+
+  - id: zhamao
+    caption: 炸毛了
+    expression: 怒目圆睁，腮帮鼓起
+    action: 全身毛发炸开，尾巴蓬成鸡毛掸子
+    shot: 全身
+
+  - id: tangping
+    caption: 躺平
+    expression: 半闭眼，生无可恋的舒适
+    action: 四脚朝天瘫在地上，肚皮朝天
+    shot: 全身俯视
+
+  - id: ganfan
+    caption: 干饭！
+    expression: 两眼放光盯着食物
+    action: 双爪抱着大碗，埋头猛吃
+    shot: 半身
+
+  - id: ningshi
+    caption: 盯～
+    expression: 瞳孔放大成圆形，面无表情凝视
+    action: 趴在桌沿，只露出眼睛以上
+    shot: 头部特写
+
+  - id: cengceng
+    caption: 蹭蹭
+    expression: 闭眼幸福，脸颊红晕
+    action: 侧脸往前蹭，猫爪搭在前面
+    shot: 头肩特写
+
+  - id: paolu
+    caption: 溜了溜了
+    expression: 坏笑，眼神瞟向一边
+    action: 四肢着地飞奔，背后一串爪印特效
+    shot: 全身侧视
+
+  # ---- 付费层（后 8 个）----
+  - id: weiqu
+    caption: 呜呜呜
+    expression: 泪眼汪汪，嘴角下垂
+    action: 缩成一团，尾巴绕住自己
+    shot: 全身
+
+  - id: jujue
+    caption: 拒绝.jpg
+    expression: 嫌弃地皱鼻子，眼神冷漠
+    action: 一只爪子向前推开，头扭向一边
+    shot: 半身
+
+  - id: geizhua
+    caption: 给爪！
+    expression: 期待的笑容
+    action: 一只猫爪伸向镜头击掌
+    shot: 半身
+
+  - id: zhuangguai
+    caption: 我乖吧
+    expression: 刻意瞪大眼睛卖萌，假装无辜
+    action: 双爪并拢端坐，尾巴乖巧地卷在脚边
+    shot: 全身
+
+  - id: toukan
+    caption: 偷看
+    expression: 好奇又心虚
+    action: 从墙角探出半个头，只露猫耳和眼睛
+    shot: 头部特写
+
+  - id: kun
+    caption: 困～
+    expression: 眼睛眯成缝，打哈欠
+    action: 揉眼睛，头一点一点打瞌睡
+    shot: 半身
+
+  - id: zhenjing
+    caption: ？！
+    expression: 瞳孔地震，胡须都竖起来
+    action: 整只猫弹起来腾空，毛发竖立
+    shot: 全身
+
+  - id: bixin
+    caption: 爱你喵
+    expression: 甜笑，眼里有爱心
+    action: 双爪在胸前比一个大爱心
+    shot: 半身
