@@ -480,7 +480,7 @@ wheels = [
 ]
 
 [[package]]
-name = "meme-me"
+name = "memeplanet"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

@@ -37,7 +37,7 @@ OUTPUT_ROOT = Path("out/web")
 LEADS_FILE = Path("out/leads.jsonl")
 PACKS_DIR = Path(os.environ.get("MEMEME_PACKS_DIR", "packs"))
 CUSTOM_PACKS_DIR = Path(os.environ.get("MEMEME_CUSTOM_PACKS_DIR", "packs/custom"))
-DEFAULT_QR_URL = "https://github.com/alextangson/meme-me"
+DEFAULT_QR_URL = "https://github.com/alextangson/memeplanet"
 
 
 def _make_scriptwriter():

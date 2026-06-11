@@ -17,7 +17,7 @@ from mememe.providers.base import ImageProvider
 
 app = typer.Typer(help=__doc__, no_args_is_help=True)
 
-DEFAULT_QR_URL = "https://github.com/alextangson/meme-me"
+DEFAULT_QR_URL = "https://github.com/alextangson/memeplanet"
 
 
 def _make_provider() -> ImageProvider:

@@ -1,4 +1,4 @@
-# meme-me 表情包工厂
+# 表情星球 memeplanet
 
 **一张自拍，变成一整套微信表情包。** 16 个梗共享同一个你，静态 + 动图，直接满足微信导入规格。
 
@@ -15,26 +15,26 @@
 
 用 AI 给自己做表情包不难，难的是后面那 4 个小时：抠图、240×240 规格化、GIF 压到 500KB、一张一张导入。而且生成 16 张"随机像你的图"容易，让 16 张是**同一个角色、同一种画风、讲同一套梗**很难。
 
-meme-me 把这条流水线全自动化：**梗剧本（YAML）→ 批量一致性生成 → 微信规格后处理 → 九宫格晒图卡**。
+memeplanet 把这条流水线全自动化：**梗剧本（YAML）→ 批量一致性生成 → 微信规格后处理 → 九宫格晒图卡**。
 
 ## 5 分钟跑通
 
 ```bash
-git clone https://github.com/alextangson/meme-me && cd meme-me
+git clone https://github.com/alextangson/memeplanet && cd meme-me
 uv sync --extra web
 
 export GEMINI_API_KEY=你的key
 # 中国大陆直连不了 Gemini，配一个中转端点即可：
 export MEMEME_GEMINI_BASE_URL=https://你的中转站/gemini
 
-uv run meme-me web        # 打开 http://127.0.0.1:8000
+uv run memeplanet web        # 打开 http://127.0.0.1:8000
 ```
 
 网页上传自拍 → 选梗剧本 → 逐张揭晓。也有纯 CLI：
 
 ```bash
-uv run meme-me generate selfie.jpg --pack packs/shechu.yaml --out out/
-uv run meme-me retry selfie.jpg 4 --pack packs/shechu.yaml --out out/   # 单张重摇
+uv run memeplanet generate selfie.jpg --pack packs/shechu.yaml --out out/
+uv run memeplanet retry selfie.jpg 4 --pack packs/shechu.yaml --out out/   # 单张重摇
 ```
 
 ## 功能
@@ -62,7 +62,7 @@ uv run meme-me retry selfie.jpg 4 --pack packs/shechu.yaml --out out/   # 单张
 梗库是这个项目真正的核心资产。一套剧本就是一个 YAML 文件——16 个梗的文案、表情、动作、镜头，外加一个全局风格块。写法见 [packs/CONTRIBUTING.md](packs/CONTRIBUTING.md)，校验只需：
 
 ```bash
-uv run meme-me validate packs/你的剧本.yaml
+uv run memeplanet validate packs/你的剧本.yaml
 ```
 
 欢迎 PR：新梗、新套装、节令限定（春节版、高考季……）。

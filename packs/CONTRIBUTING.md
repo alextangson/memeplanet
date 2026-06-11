@@ -31,7 +31,7 @@ memes:
 2. **文案用真实聊天语境的高频词**，不要自造梗；想象它出现在你自己的群里
 3. **expression/action 要具体可画**：模型照着画，写得越戏剧化效果越好
 4. 顺序就是叙事：有起承转合的套装比散装强
-5. 提交前跑 `uv run meme-me validate packs/你的文件.yaml`
+5. 提交前跑 `uv run memeplanet validate packs/你的文件.yaml`
 
 ## 什么样的剧本会被合并
 

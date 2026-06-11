@@ -1,5 +1,5 @@
 [project]
-name = "meme-me"
+name = "memeplanet"
 version = "0.1.0"
 description = "一张自拍生成整套微信表情包 — turn one selfie into a full WeChat sticker pack"
 readme = "README.md"
@@ -20,7 +20,7 @@ rembg = ["rembg>=2.0", "onnxruntime>=1.18"]
 web = ["fastapi>=0.111", "uvicorn>=0.30", "python-multipart>=0.0.9"]
 
 [project.scripts]
-meme-me = "mememe.cli:app"
+memeplanet = "mememe.cli:app"
 
 [dependency-groups]
 dev = ["pytest>=8.0"]
