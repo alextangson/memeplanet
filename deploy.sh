@@ -21,6 +21,9 @@ rsync -avz \
 echo "==> restart memeplanet.service"
 ssh memeplanet-vds 'systemctl restart memeplanet && systemctl is-active memeplanet'
 
+echo "==> wait for app startup"
+sleep 5
+
 echo "==> smoke checks"
 curl -fsS -o /dev/null -w 'home            %{http_code}\n' https://meme-planet.com/
 curl -fsS -o /dev/null -w 'api/packs       %{http_code}\n' https://meme-planet.com/api/packs
