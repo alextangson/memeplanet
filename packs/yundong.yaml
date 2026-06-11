@@ -22,7 +22,7 @@ memes:
     caption: 开练！
     expression: 斗志昂扬，眼神发光
     action: 戴着耳机扛起杠铃，气势全开
-    shot: 全身
+    shot: 半身
 
   - id: liantui-wucue
     caption: 练腿日，勿cue
@@ -57,8 +57,8 @@ memes:
   - id: youyang-bushu
     caption: 有氧？不熟
     expression: 嫌弃撇嘴，摆手拒绝
-    action: 坐在地上啃蛋白棒朝后摆手，身后跑步机在追
-    shot: 全身
+    action: 啃着蛋白棒朝后摆手拒绝，身后跑步机探出半个头
+    shot: 半身
 
   - id: tong-taitong
     caption: 痛，太痛了
@@ -94,8 +94,8 @@ memes:
   - id: qixie-youren
     caption: 器械有人？
     expression: 不耐烦，眯眼怒视
-    action: 抱臂站立探头张望，脚边地上画满一圈圈等待记号
-    shot: 全身
+    action: 抱臂探头张望，头顶冒出转圈的等待计时图标
+    shot: 半身
 
   - id: bubanka
     caption: 不办卡，谢谢
@@ -113,4 +113,4 @@ memes:
     caption: 瘦下来还是帅的
     expression: 自我陶醉的微笑
     action: 照镜子，镜子里是肌肉发达的巨佬版自己
-    shot: 全身
+    shot: 半身

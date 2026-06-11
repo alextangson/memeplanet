@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from mememe.core.compiler import compile_pack
+from mememe.core.compiler import compile_meme, compile_pack
 from mememe.core.schema import load_pack
 
 PACKS_DIR = Path(__file__).parent.parent / "packs"
@@ -134,3 +134,19 @@ def test_group_pack_identity_block():
     prompt = compile_pack(Pack.model_validate(base))[0]
     assert "所有人" in prompt and "各自" in prompt
     assert "人物组合" in prompt
+
+
+def test_every_prompt_carries_composition_rules():
+    # 构图铁律硬编码进模板，不依赖剧本作者自觉
+    pack = load_pack(PACKS_DIR / "shechu.yaml")
+    for prompt in compile_pack(pack):
+        assert "居中" in prompt
+        assert "不倾斜" in prompt
+        assert "五官清晰" in prompt  # 脸部相似度第一优先级
+
+
+def test_style_override_restates_composition_protection():
+    pack = load_pack(PACKS_DIR / "shechu.yaml")
+    styled = compile_meme(pack, pack.memes[0], style="sticker")
+    tail = styled.split("【画风指定】")[1]
+    assert "居中端正的构图" in tail  # 画风段不得推翻构图铁律
