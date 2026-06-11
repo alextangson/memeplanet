@@ -42,10 +42,15 @@ class GeminiProvider:
     def generate(self, prompt: str, reference: bytes) -> bytes:
         from google.genai import types
 
+        mime = (
+            "image/png"
+            if reference[:8] == b"\x89PNG\r\n\x1a\n"
+            else "image/jpeg"
+        )
         response = self._client.models.generate_content(
             model=self._model,
             contents=[
-                types.Part.from_bytes(data=reference, mime_type="image/jpeg"),
+                types.Part.from_bytes(data=reference, mime_type=mime),
                 prompt,
             ],
             config=types.GenerateContentConfig(

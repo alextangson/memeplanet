@@ -252,3 +252,32 @@ def test_jobs_survive_restart_but_retry_is_blocked(client, tmp_path, monkeypatch
 
     resp = fresh.post(f"/api/jobs/{job_id}/retry/1")
     assert resp.status_code == 409  # selfie gone by privacy design
+
+
+def test_frames_falls_back_to_other_provider(client, tmp_path, monkeypatch):
+    good = FakeProvider()
+
+    class FailingProvider:
+        def generate(self, prompt: str, reference: bytes) -> bytes:
+            raise RuntimeError("relay 500")
+
+    def factory(name: str = ""):
+        return good if name == "seedream" else FailingProvider()
+
+    job_id = _animated_job(client)  # generated with the original fixture provider
+    monkeypatch.setattr(webapp, "_make_provider", factory)
+
+    resp = client.post(f"/api/jobs/{job_id}/animate/1", data={"mode": "frames"})
+    assert resp.status_code == 200
+    job = _wait_anim(client, job_id, 0)
+    assert job["images"][0]["anim_status"] == "done"
+    assert len(good.prompts) == 1  # fallback provider did the edit
+
+
+def test_frames_on_job_without_raw_rejected(client, tmp_path):
+    job_id = _animated_job(client)
+    for raw in (tmp_path / job_id).glob("raw-*.png"):
+        raw.unlink()  # simulate pre-persistence history job
+    resp = client.post(f"/api/jobs/{job_id}/animate/1", data={"mode": "frames"})
+    assert resp.status_code == 409
+    assert "抖一抖" in resp.json()["detail"]

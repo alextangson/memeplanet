@@ -47,6 +47,15 @@ def _make_provider(name: str = "") -> ImageProvider:
     return GeminiProvider()
 
 
+def _fallback_image_provider(name: str) -> ImageProvider | None:
+    """拼帧编辑对上游错误敏感（中转 500 等）；失败时换另一家试一次。"""
+    other = "seedream" if (name or "gemini") == "gemini" else "gemini"
+    try:
+        return _make_provider(other)
+    except Exception:
+        return None
+
+
 def _make_video_provider():
     from biaoqingbao.providers.seedance import SeedanceVideoProvider
 
@@ -191,7 +200,14 @@ def _make_anim_gif(job: Job, index: int, mode: str, provider) -> bytes:
         return procedural_gif(png, effect=mode)
     if mode == "frames":
         raw = (job.out_dir / f"raw-{stem}.png").read_bytes()
-        alt = provider.generate(compile_keyframe(job.pack, job.pack.memes[pos]), raw)
+        prompt = compile_keyframe(job.pack, job.pack.memes[pos])
+        try:
+            alt = provider.generate(prompt, raw)
+        except Exception:
+            fallback = _fallback_image_provider(job.provider_name)
+            if fallback is None:
+                raise
+            alt = fallback.generate(prompt, raw)
         frames = [
             Image.open(io.BytesIO((job.out_dir / f"{stem}.png").read_bytes())),
             Image.open(
@@ -389,6 +405,12 @@ def create_app() -> FastAPI:
             raise HTTPException(409, "找不到该任务的剧本文件，只能用「抖一抖」")
         if not 1 <= index <= len(job.images):
             raise HTTPException(400, f"index must be 1..{len(job.images)}")
+        if mode in ("video", "frames"):
+            stem = _sticker_stem(job, index)
+            if not (job.out_dir / f"raw-{stem}.png").exists():
+                raise HTTPException(
+                    409, "这个历史任务没有保存原图，拼帧和视频做不了，只能用「抖一抖」"
+                )
         with job.lock:
             img = job.images[index - 1]
             if img["status"] != "done":
@@ -668,7 +690,9 @@ function render(job) {
       cell.innerHTML = `<div class="cap">失败</div><div class="act redo">🔄</div>`;
       cell.querySelector('.redo').onclick = () => retry(img.index);
     } else if (img.anim_status === 'done') {
-      cell.innerHTML = `<img src="${img.anim_url}?t=${Date.now()}"><div class="badge">GIF</div>`;
+      cell.innerHTML = `<img src="${img.anim_url}?t=${Date.now()}"><div class="badge">GIF</div>
+        <div class="act anim" style="top:auto;bottom:4px" title="换一种动法">✨</div>`;
+      cell.querySelector('.anim').onclick = (e) => { e.stopPropagation(); animMenu(img.index); };
     } else if (img.anim_status === 'running') {
       cell.innerHTML = `<img src="${img.url}"><div class="badge busy">🎬 动图中</div>`;
     } else {
