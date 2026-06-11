@@ -391,34 +391,37 @@ def create_app() -> FastAPI:
             ) + "\n")
         return {"ok": True}
 
+    def _pack_info(path: Path, is_custom: bool) -> dict:
+        pack = load_pack(path)
+        has_preview = any(
+            (b / "previews" / f"{pack.id}.png").exists()
+            for b in (PACKS_DIR, CUSTOM_PACKS_DIR)
+        )
+        return {
+            "id": pack.id,
+            "name": pack.name,
+            "description": pack.description,
+            "meme_count": len(pack.memes),
+            "captions": [m.caption for m in pack.memes],
+            "preview_url": f"/api/pack-preview/{pack.id}" if has_preview else "",
+            "custom": is_custom,
+        }
+
     @app.get("/api/packs")
     def list_packs() -> list[dict]:
-        packs = []
-        sources = [(PACKS_DIR, False)]
-        if CUSTOM_PACKS_DIR.exists():
-            sources.append((CUSTOM_PACKS_DIR, True))
-        for base, is_custom in sources:
-            for path in sorted(base.glob("*.yaml")):
-                pack = load_pack(path)
-                has_preview = any(
-                    (b / "previews" / f"{pack.id}.png").exists()
-                    for b in (PACKS_DIR, CUSTOM_PACKS_DIR)
-                )
-                packs.append(
-                    {
-                        "id": pack.id,
-                        "name": pack.name,
-                        "description": pack.description,
-                        "meme_count": len(pack.memes),
-                        "captions": [m.caption for m in pack.memes],
-                        "preview_url": f"/api/pack-preview/{pack.id}" if has_preview else "",
-                        "custom": is_custom,
-                    }
-                )
-        # 自己的定制包最前，旗舰其次，新投稿按字母序殿后
+        # 公共列表只含官方剧本；定制剧本仅创建者凭链接经 /api/packs/{id} 取
+        packs = [_pack_info(p, False) for p in sorted(PACKS_DIR.glob("*.yaml"))]
+        # 旗舰最前，新投稿按字母序殿后
         order = {"shechu": 0, "qinglv": 1, "maomi": 2, "gouzi": 3, "yinyang": 4, "lianai": 5, "ganfan": 6, "qimo": 7, "hajimi": 8}
-        packs.sort(key=lambda p: (not p["custom"], order.get(p["id"], 99), p["id"]))
+        packs.sort(key=lambda p: (order.get(p["id"], 99), p["id"]))
         return packs
+
+    @app.get("/api/packs/{pack_id}")
+    def get_pack(pack_id: str) -> dict:
+        path = _find_pack_path(pack_id)
+        if path is None:
+            raise HTTPException(404, "pack not found")
+        return _pack_info(path, path.parent == CUSTOM_PACKS_DIR)
 
     @app.get("/api/styles")
     def list_styles() -> dict:
@@ -551,6 +554,8 @@ def create_app() -> FastAPI:
         items = []
         for job in jobs.values():
             done = sum(1 for i in job.images if i["status"] == "done")
+            if done == 0:
+                continue  # 一张都没出（失败/刚启动）→ 无缩略图可显，不进历史
             first = next((i["url"] for i in job.images if i.get("url")), "")
             items.append(
                 {

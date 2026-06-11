@@ -413,12 +413,28 @@ function renderPacks(filter) {
   });
 }
 
-function refreshPacks(selectId) {
-  return fetch('/api/packs').then(r => r.json()).then(packs => {
-    allPacks = packs;
-    if (selectId) packId = selectId;
-    renderPacks($('psearch').value);
-  });
+// 定制剧本只属于创建者：服务器不公开列出，浏览器本地记住自己的
+const MY_PACKS_KEY = 'mp_my_packs';
+function myPackIds() {
+  try { return JSON.parse(localStorage.getItem(MY_PACKS_KEY)) || []; } catch { return []; }
+}
+
+async function refreshPacks(selectId) {
+  const saved = myPackIds();
+  const ids = [...new Set([selectId, ...saved].filter(Boolean))];
+  const pubReq = fetch('/api/packs').then(r => r.json());
+  const mine = await Promise.all(ids.map(id =>
+    fetch('/api/packs/' + encodeURIComponent(id))
+      .then(r => r.ok ? r.json() : (r.status === 404 ? 'gone' : null))
+      .catch(() => null)));
+  const pub = await pubReq;
+  const customs = mine.filter(p => p && p !== 'gone' && p.custom);
+  // 已删的剔除，临时取不到的保留
+  localStorage.setItem(MY_PACKS_KEY, JSON.stringify(ids.filter((id, i) =>
+    mine[i] === null ? saved.includes(id) : (mine[i] !== 'gone' && mine[i].custom))));
+  allPacks = [...customs, ...pub.filter(p => !customs.some(c => c.id === p.id))];
+  if (selectId) packId = selectId;
+  renderPacks($('psearch').value);
 }
 
 refreshPacks(new URLSearchParams(location.search).get('pack') || undefined);

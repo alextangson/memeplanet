@@ -241,6 +241,25 @@ def test_history_endpoint_lists_jobs(client):
     assert items[0]["pack_name"]
 
 
+def test_failed_job_with_no_images_hidden_from_history(client, monkeypatch):
+    class FailingProvider:
+        def generate(self, prompt: str, reference: bytes) -> bytes:
+            raise RuntimeError("provider 500")
+
+    monkeypatch.setattr(webapp, "_make_provider", lambda name="": FailingProvider())
+    resp = client.post(
+        "/api/generate",
+        files={"selfie": ("me.jpg", _selfie_bytes(), "image/jpeg")},
+        data={"pack_id": "shechu"},
+    )
+    job_id = resp.json()["job_id"]
+    job = _wait_done(client, job_id)
+    assert job["status"] == "error"
+
+    items = client.get("/api/history").json()
+    assert all(i["job_id"] != job_id for i in items)  # 0 张完成 → 不进历史
+
+
 def test_jobs_survive_restart_but_retry_is_blocked(client, tmp_path, monkeypatch):
     job_id = _animated_job(client)
 
@@ -337,7 +356,7 @@ def test_agent_chat_keeps_history(agent_client):
     assert r2.json()["draft_id"] == draft_id
 
 
-def test_agent_draft_creates_custom_pack_visible_in_picker(agent_client):
+def test_agent_draft_creates_custom_pack_private_to_creator(agent_client):
     draft_id = agent_client.post(
         "/api/agent/chat", data={"message": "程序员上线日"}
     ).json()["draft_id"]
@@ -346,11 +365,21 @@ def test_agent_draft_creates_custom_pack_visible_in_picker(agent_client):
     assert resp.status_code == 200, resp.text
     assert resp.json()["pack_id"] == "dingzhi"
 
+    # 定制剧本不进公共列表——只有持有链接的创建者可见
     packs = agent_client.get("/api/packs").json()
-    custom = next(p for p in packs if p["id"] == "dingzhi")
-    assert custom["custom"] is True
-    assert custom["meme_count"] == 16
-    assert packs[0]["id"] == "dingzhi"  # 自己的定制包排最前
+    assert all(p["id"] != "dingzhi" for p in packs)
+
+    single = agent_client.get("/api/packs/dingzhi")
+    assert single.status_code == 200
+    assert single.json()["custom"] is True
+    assert single.json()["meme_count"] == 16
+
+
+def test_get_pack_by_id(client):
+    resp = client.get("/api/packs/shechu")
+    assert resp.status_code == 200
+    assert resp.json()["custom"] is False
+    assert client.get("/api/packs/nope").status_code == 404
 
 
 def test_generate_works_with_custom_pack(agent_client):
@@ -414,9 +443,9 @@ def test_custom_pack_preview_generated_and_served(agent_client, tmp_path, monkey
     while _t.time() < deadline and not preview.exists():
         _t.sleep(0.05)
     assert preview.exists()
-    packs = agent_client.get("/api/packs").json()
-    assert packs[0]["preview_url"] == f"/api/pack-preview/{pack_id}"
-    assert agent_client.get(packs[0]["preview_url"]).status_code == 200
+    pack = agent_client.get(f"/api/packs/{pack_id}").json()
+    assert pack["preview_url"] == f"/api/pack-preview/{pack_id}"
+    assert agent_client.get(pack["preview_url"]).status_code == 200
 
 
 def test_styles_endpoint(client):
