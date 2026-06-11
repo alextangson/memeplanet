@@ -1,0 +1,112 @@
+# 干饭人 — 全民干饭语境。食物道具越夸张越好。
+
+id: ganfan
+name: 干饭人
+description: 干饭人的 16 个真实瞬间，民以食为天
+version: 1
+language: zh
+
+style: |
+  Q版三头身（chibi）贴纸插画风格，粗白色描边，背景必须纯白。
+  人物特征必须与参考照片一致并贯穿全套：发型、脸型、肤色、眼镜/配饰、服装。
+  暖色调食物氛围，食物道具画得夸张诱人（巨大碗、超大奶茶、堆成山的炸鸡）。
+  文案以大号中文手写体渲染在画面下方居中，字色深、带白边，清晰可读。
+
+memes:
+  # ---- 免费层 ----
+  - id: ganfan-le
+    caption: 干饭了！
+    expression: 两眼放光，斗志昂扬
+    action: 双手举着筷子和碗向前冲刺
+    shot: 全身
+
+  - id: e
+    caption: 饿……
+    expression: 有气无力，眼神涣散
+    action: 整个人瘫趴在桌上，肚子冒出咕咕声波特效
+    shot: 全身
+
+  - id: zhenxiang
+    caption: 真香
+    expression: 满脸幸福陶醉，腮帮塞满
+    action: 埋头猛吃，筷子不停
+    shot: 半身
+
+  - id: naicha-xuming
+    caption: 奶茶续命
+    expression: 闭眼满足，灵魂回归
+    action: 双手抱着比头还大的奶茶杯猛吸
+    shot: 半身
+
+  - id: chi-dianhaode
+    caption: 吃点好的
+    expression: 期待到发光
+    action: 搓着手围着摆满菜的桌子转
+    shot: 半身
+
+  - id: jianfei-mingtian
+    caption: 减肥？明天吧
+    expression: 理直气壮的坦然
+    action: 一手推开沙拉，一手抓起炸鸡
+    shot: 半身
+
+  - id: hai-xiang-chi
+    caption: 还想吃
+    expression: 意犹未尽地舔嘴唇
+    action: 眼巴巴盯着空盘子，手里还握着筷子
+    shot: 头肩特写
+
+  - id: cheng-le
+    caption: 撑了……
+    expression: 幸福又痛苦的纠结脸
+    action: 瘫在椅子上，双手摸着滚圆的肚子
+    shot: 全身
+
+  # ---- 付费层 ----
+  - id: ti-wo-chidian
+    caption: 替我吃点
+    expression: 含泪的羡慕
+    action: 隔着屏幕伸手够别人的外卖
+    shot: 半身
+
+  - id: pindan-ma
+    caption: 拼单吗
+    expression: 挑眉营业的笑
+    action: 举着手机展示外卖页面
+    shot: 半身
+
+  - id: yexiao-zouqi
+    caption: 夜宵走起
+    expression: 眼冒精光的坏笑
+    action: 披着被子蹑手蹑脚出动
+    shot: 全身
+
+  - id: bu-chi-le
+    caption: 不吃了！
+    expression: 下定决心的严肃脸
+    action: 推开碗筷站起来，头顶燃起小火苗
+    shot: 半身
+
+  - id: jiu-chi-yikou
+    caption: 就吃一口
+    expression: 心虚的试探眼神
+    action: 偷偷把筷子伸向别人的盘子
+    shot: 半身
+
+  - id: dengfan-zhong
+    caption: 等饭中
+    expression: 望眼欲穿
+    action: 双手捧着取餐号码牌，脖子伸得老长
+    shot: 全身
+
+  - id: shei-dongle-lingshi
+    caption: 谁动了我的零食
+    expression: 震惊加愤怒
+    action: 举着空零食袋质问天空
+    shot: 半身
+
+  - id: meishi-leida
+    caption: 美食雷达启动
+    expression: 警觉地眯眼嗅探
+    action: 头顶冒出旋转雷达，鼻子朝天嗅
+    shot: 全身

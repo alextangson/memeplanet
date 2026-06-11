@@ -1,0 +1,112 @@
+# 恋爱脑 — 情侣/暧昧期私聊专用。软萌撒娇向。
+
+id: lianai
+name: 恋爱脑
+description: 对象专用的 16 个撒娇瞬间，甜度超标
+version: 1
+language: zh
+
+style: |
+  Q版三头身（chibi）贴纸插画风格，粗白色描边，背景必须纯白。
+  人物特征必须与参考照片一致并贯穿全套：发型、脸型、肤色、眼镜/配饰、服装。
+  粉嫩软萌氛围，脸颊常驻红晕，爱心、星星、泡泡等元素点缀。
+  文案以大号中文手写体渲染在画面下方居中，字色深、带白边，清晰可读。
+
+memes:
+  # ---- 免费层 ----
+  - id: xiangnile
+    caption: 想你了
+    expression: 眼睛变成爱心，脸颊红晕
+    action: 双手捧脸，周围漂浮小爱心
+    shot: 头肩特写
+
+  - id: qinqin
+    caption: 亲亲
+    expression: 闭眼嘟嘴，脸颊鼓起
+    action: 向镜头凑近，飞出一个吻形爱心
+    shot: 头部特写
+
+  - id: qiu-baobao
+    caption: 求抱抱
+    expression: 可怜巴巴的期待眼神
+    action: 张开双臂朝镜头扑过来
+    shot: 全身
+
+  - id: heng
+    caption: 哼！
+    expression: 鼓起腮帮子，假装生气
+    action: 双臂抱胸，头扭向一边
+    shot: 半身
+
+  - id: bulini-le
+    caption: 不理你了
+    expression: 撅嘴，眼睛却偷偷瞄回来
+    action: 背对镜头，回头偷看
+    shot: 全身
+
+  - id: kuai-kuawo
+    caption: 快夸我
+    expression: 眼神亮晶晶充满期待
+    action: 叉腰挺胸，下巴抬高
+    shot: 半身
+
+  - id: weiqu-baba
+    caption: 委屈巴巴
+    expression: 泪眼汪汪，嘴角下垂
+    action: 低头，两根食指互相戳戳
+    shot: 头肩特写
+
+  - id: zai-ganma
+    caption: 在干嘛
+    expression: 好奇张望
+    action: 单手托腮，另一只手敲着桌子等回复
+    shot: 半身
+
+  # ---- 付费层 ----
+  - id: chicu-le
+    caption: 吃醋了
+    expression: 酸溜溜地斜眼，撇嘴
+    action: 咬着手帕，眼泪在眼眶打转
+    shot: 半身
+
+  - id: taoyan-la
+    caption: 讨厌啦
+    expression: 害羞红脸偷笑
+    action: 双手捂脸，从指缝偷看
+    shot: 头肩特写
+
+  - id: jiangli-ni
+    caption: 奖励你
+    expression: 得意的甜笑
+    action: 双手递出一颗大爱心
+    shot: 半身
+
+  - id: dai-wo-wan
+    caption: 带我玩
+    expression: 仰望的期待脸
+    action: 拽着对方衣角不撒手
+    shot: 全身
+
+  - id: wanan
+    caption: 晚安
+    expression: 闭眼恬静微笑
+    action: 抱着枕头，头顶挂着月亮和星星
+    shot: 全身
+
+  - id: mofa-fashe
+    caption: 接收爱心光波
+    expression: 元气满满的笑
+    action: 双手比心向前发射爱心光波特效
+    shot: 全身
+
+  - id: hongbao-nalai
+    caption: 红包拿来
+    expression: 狡黠眨眼
+    action: 摊开双手伸向镜头
+    shot: 半身
+
+  - id: yongyuan-aini
+    caption: 永远爱你
+    expression: 真诚灿烂的笑容
+    action: 双手在头顶比一个超大爱心
+    shot: 全身

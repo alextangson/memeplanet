@@ -1,0 +1,112 @@
+# 阴阳大师 — 群聊互怼专用。阴阳怪气靠微表情，不靠大动作。
+
+id: yinyang
+name: 阴阳大师
+description: 群聊语境的 16 句高频阴阳怪气，微表情艺术
+version: 1
+language: zh
+
+style: |
+  Q版三头身（chibi）贴纸插画风格，粗白色描边，背景必须纯白。
+  人物特征必须与参考照片一致并贯穿全套：发型、脸型、肤色、眼镜/配饰、服装。
+  配色冷淡疏离，表情克制而微妙——阴阳怪气的精髓在眼神和嘴角，不在大动作。
+  文案以大号中文手写体渲染在画面下方居中，字色深、带白边，清晰可读。
+
+memes:
+  # ---- 免费层 ----
+  - id: duiduidui
+    caption: 对对对
+    expression: 敷衍假笑，眼神放空
+    action: 机械地鼓掌
+    shot: 半身
+
+  - id: nin-shuode-dui
+    caption: 您说得对
+    expression: 皮笑肉不笑，眼睛眯成缝
+    action: 拱手抱拳，微微欠身假客气
+    shot: 半身
+
+  - id: o
+    caption: 哦
+    expression: 面无表情，眼神冷漠地斜视
+    action: 单手托腮，一根手指敲桌面
+    shot: 头肩特写
+
+  - id: jiu-zhe
+    caption: 就这？
+    expression: 挑眉俯视，嘴角轻蔑上扬
+    action: 双臂抱胸，下巴微抬
+    shot: 半身
+
+  - id: jile-jile
+    caption: 急了急了
+    expression: 幸灾乐祸的坏笑
+    action: 手指向前方，身体后仰大笑
+    shot: 半身
+
+  - id: bengbuzhu
+    caption: 绷不住了
+    expression: 憋笑到面部颤抖，眼角挤出泪
+    action: 捂着嘴，肩膀抖动
+    shot: 头肩特写
+
+  - id: dian
+    caption: 典
+    expression: 嫌弃地撇嘴，眼神疲惫
+    action: 面无表情地竖起大拇指
+    shot: 半身
+
+  - id: le
+    caption: 乐
+    expression: 似笑非笑，嘴角微微抽搐
+    action: 双手插兜站着
+    shot: 半身
+
+  # ---- 付费层 ----
+  - id: bukui-shi-ni
+    caption: 不愧是你
+    expression: 眼神空洞，礼貌性微笑
+    action: 缓慢地鼓掌
+    shot: 半身
+
+  - id: na-meishi-le
+    caption: 那没事了
+    expression: 瞬间冷漠，懒得多说
+    action: 双手一摊，转身欲走
+    shot: 全身
+
+  - id: nin-suiyi
+    caption: 您随意
+    expression: 假客气的微笑
+    action: 做出「请」的手势，微微鞠躬
+    shot: 全身
+
+  - id: a-duiduidui
+    caption: 啊对对对
+    expression: 闭眼敷衍
+    action: 点头如捣蒜，频率夸张
+    shot: 头肩特写
+
+  - id: zai-li
+    caption: 在理
+    expression: 假装沉思，若有所思地点头
+    action: 单手托下巴
+    shot: 半身
+
+  - id: bangbuzhu
+    caption: 蚌埠住了
+    expression: 笑到流泪，表情失控
+    action: 一手拍桌一手扶额
+    shot: 半身
+
+  - id: tui-tui-tui
+    caption: 退！退！退！
+    expression: 严肃驱邪的认真脸
+    action: 比出剑指向前方连续点击
+    shot: 全身
+
+  - id: shoumingle
+    caption: 收明白了
+    expression: 意味深长的微笑，挑一边眉毛
+    action: 双手抱拳作揖
+    shot: 半身

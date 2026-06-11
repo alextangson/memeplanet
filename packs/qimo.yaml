@@ -1,0 +1,112 @@
+# 期末战神 — 学生党考试季。疲惫但搞笑，自嘲向。
+
+id: qimo
+name: 期末战神
+description: 学生党考试季的 16 个生死瞬间
+version: 1
+language: zh
+
+style: |
+  Q版三头身（chibi）贴纸插画风格，粗白色描边，背景必须纯白。
+  人物特征必须与参考照片一致并贯穿全套：发型、脸型、肤色、眼镜/配饰、服装。
+  校园元素点缀（书本、试卷、台灯），疲惫感拉满但整体搞笑自嘲不丧。
+  文案以大号中文手写体渲染在画面下方居中，字色深、带白边，清晰可读。
+
+memes:
+  # ---- 免费层 ----
+  - id: fuxi-zhong
+    caption: 复习中
+    expression: 心虚的假认真
+    action: 竖起的课本后面藏着手机偷玩
+    shot: 半身
+
+  - id: qiu-guo
+    caption: 求过！
+    expression: 虔诚到发光
+    action: 双手合十祈祷，面前摆着试卷
+    shot: 半身
+
+  - id: gan-due
+    caption: 赶due中
+    expression: 眼冒血丝，头发凌乱炸开
+    action: 双手残影般疯狂敲键盘
+    shot: 半身
+
+  - id: guake-bianyuan
+    caption: 挂科边缘
+    expression: 惊恐求生
+    action: 单手吊在悬崖边，崖上立着「60分」的牌子
+    shot: 全身
+
+  - id: ting-bu-dong
+    caption: 听不懂
+    expression: 眼神涣散，满头问号
+    action: 呆坐着，头顶问号越冒越多
+    shot: 半身
+
+  - id: jiao-le
+    caption: 交了！
+    expression: 如释重负的解脱
+    action: 瘫倒在桌上，半透明灵魂从头顶飘出
+    shot: 全身
+
+  - id: bai-le
+    caption: 摆了
+    expression: 彻底放弃的平静微笑
+    action: 四仰八叉躺在一堆书上
+    shot: 全身俯视
+
+  - id: zaoba-qushi
+    caption: 早八去世
+    expression: 闭着眼，灵魂出窍
+    action: 站着睡着，头顶一朵下雨乌云
+    shot: 半身
+
+  # ---- 付费层 ----
+  - id: jie-biji
+    caption: 借笔记
+    expression: 谄媚讨好的笑
+    action: 搓着手疯狂鞠躬
+    shot: 半身
+
+  - id: hua-zhongdian
+    caption: 划重点了！
+    expression: 瞬间惊醒瞪圆眼
+    action: 从趴睡状态弹起来狂记笔记
+    shot: 半身
+
+  - id: tushuguan-zhanzuo
+    caption: 占座成功
+    expression: 胜利的得意
+    action: 抱着一摞书插旗在桌上
+    shot: 全身
+
+  - id: gpa-baoyou
+    caption: 绩点保佑
+    expression: 庄严肃穆
+    action: 对着发光的「GPA」三个大字跪拜上香
+    shot: 全身
+
+  - id: zudui-ma
+    caption: 组队吗
+    expression: 期待的试探笑容
+    action: 从门边探出半个身子招手
+    shot: 半身
+
+  - id: dangchang-shihua
+    caption: 又加一节课？
+    expression: 表情凝固石化
+    action: 整个人变成石像，表面出现裂纹
+    shot: 半身
+
+  - id: cha-chengji
+    caption: 查成绩中
+    expression: 紧张到不敢看
+    action: 双手捂眼，从指缝偷看手机
+    shot: 头肩特写
+
+  - id: guo-le
+    caption: 过了！！
+    expression: 狂喜爆发
+    action: 原地跳起，试卷漫天飞舞
+    shot: 全身
