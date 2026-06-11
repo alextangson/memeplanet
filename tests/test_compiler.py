@@ -92,6 +92,27 @@ def test_pet_pack_uses_pet_identity_block():
     assert "宠物" in pet_prompt
 
 
+def test_pet_identity_forbids_species_swap():
+    """实测狗子套里画出过猫——物种必须有硬性负面约束。"""
+    from mememe.core.schema import Pack
+
+    base = {
+        "id": "t", "name": "测试", "style": "贴纸风", "subject": "pet",
+        "memes": [{"id": "a", "caption": "汪", "expression": "笑",
+                   "action": "摇尾巴", "shot": "全身"}],
+    }
+    prompt = compile_pack(Pack.model_validate(base))[0]
+    assert "物种" in prompt
+    assert "严禁" in prompt and "其他动物" in prompt
+
+
+def test_prompt_forbids_scene_backgrounds_globally():
+    """定制包的梗描述常带场景词，模板要兜底：只画道具不画环境。"""
+    pack = load_pack(PACKS_DIR / "shechu.yaml")
+    for prompt in compile_pack(pack):
+        assert "不画环境" in prompt
+
+
 def test_motion_override_replaces_default():
     from mememe.core.compiler import compile_keyframe, compile_motion
 

@@ -52,6 +52,18 @@ def test_draft_returns_validated_pack_with_injected_style():
     assert DRAFT_INSTRUCTION in messages[-1]["content"]
 
 
+def test_style_base_forbids_scene_backgrounds():
+    """定制包实测出过奇怪背景——风格基底要对场景下硬约束。"""
+    chat = FakeChat([json.dumps(_valid_draft(), ensure_ascii=False)])
+    pack = Scriptwriter(chat).draft([{"role": "user", "content": "随便"}])
+    assert "严禁" in pack.style and "场景" in pack.style
+
+
+def test_draft_instruction_constrains_scene_words():
+    # 从源头治：出梗时就不让写地点/环境，动作用姿态和小道具表达
+    assert "地点" in DRAFT_INSTRUCTION and "道具" in DRAFT_INSTRUCTION
+
+
 def test_draft_retries_once_on_invalid_then_raises():
     bad = json.dumps({"id": "x", "name": "缺梗"})
     chat = FakeChat([bad, bad])
