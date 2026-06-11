@@ -66,7 +66,7 @@ class SeedreamProvider:
             f"{self._base_url}/api/v3/images/generations",
             headers={"Authorization": f"Bearer {self._api_key}"},
             json=build_payload(prompt, reference, model=self._model, size=self._size),
-            timeout=180,
+            timeout=180, trust_env=False,
         )
         try:
             data = resp.json()

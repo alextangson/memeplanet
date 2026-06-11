@@ -41,7 +41,7 @@ class DeepSeekChat:
             f"{self._base_url}/chat/completions",
             headers={"Authorization": f"Bearer {self._api_key}"},
             json=build_chat_payload(messages, model=self._model, json_mode=json_mode),
-            timeout=180,
+            timeout=180, trust_env=False,
         )
         try:
             data = resp.json()

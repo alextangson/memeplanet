@@ -65,6 +65,18 @@
   .use p { font-size: 12px; color: var(--ink-3); line-height: 1.6; }
 
   textarea.search { resize: vertical; min-height: 64px; font-family: inherit; }
+  .stylerow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  @media (max-width: 560px) { .stylerow { grid-template-columns: repeat(3, 1fr); } }
+  .stylerow figure { margin: 0; text-align: center; }
+  .stylerow img { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 11px;
+                  border: 2px solid var(--line); background: #F3ECD8; transition: .12s; }
+  .stylerow figure:hover img { transform: translateY(-2px) rotate(-1.5deg); border-color: var(--ink); }
+  .stylerow figcaption { font-size: 11.5px; font-weight: 700; color: var(--ink-2); margin-top: 5px; }
+  .presets { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 10px; }
+  .presets button { border: 1.5px solid var(--line); background: #FFFDF6; border-radius: 999px;
+                    padding: 7px 12px; font-size: 12.5px; font-weight: 700; color: var(--ink-2); cursor: pointer; transition: .12s; }
+  .presets button:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
+  .hint { font-size: 12.5px; color: var(--ink-3); line-height: 1.7; }
   .toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); background: var(--ink); color: #fff;
            font-size: 13.5px; padding: 11px 18px; border-radius: 999px; z-index: 50; opacity: 0; transition: .25s;
            pointer-events: none; max-width: 86vw; }
@@ -95,17 +107,35 @@
 
   <main>
   <div class="card soft">
-    <div class="label">都有谁在定制</div>
-    <div class="uses">
-      <div class="use"><b>个人专属</b><p>把自己的口头禅做成一套，群里只有你有</p></div>
-      <div class="use"><b>情侣 / 家人</b><p>你们之间的暗号和小梗，外人看不懂才好</p></div>
-      <div class="use"><b>宠物主子</b><p>替它说出它想说的话</p></div>
-      <div class="use"><b>品牌 / IP</b><p>吉祥物表情包发粉丝群，还能上架微信商店</p></div>
+    <div class="label">能定制什么 · 全都可以聊出来</div>
+    <div class="uses" style="grid-template-columns:repeat(3,1fr)">
+      <div class="use"><b>梗和文案</b><p>你的口头禅、你们的暗号、品牌口号，16 个梗全部为你定制；生成后每张还能单独改字</p></div>
+      <div class="use"><b>文字样式</b><p>手写、粗梗体、圆萌体随心换；默认一套里自动混搭四种字形，不呆板</p></div>
+      <div class="use"><b>动图动作</b><p>每张都能动起来，动作由你一句话指定：比如「举着咖啡杯慢动作干杯」</p></div>
     </div>
+  </div>
+
+  <div class="card soft">
+    <div class="label">画风随便挑 · 同一张脸，五种宇宙</div>
+    <div class="stylerow">
+      <figure><img src="/api/pack-preview/shechu" loading="lazy" alt="经典贴纸画风示例"><figcaption>经典贴纸</figcaption></figure>
+      <figure><img src="/api/pack-preview/style-bojack" loading="lazy" alt="马男扁平画风示例"><figcaption>马男扁平</figcaption></figure>
+      <figure><img src="/api/pack-preview/style-anime" loading="lazy" alt="日漫画风示例"><figcaption>日漫</figcaption></figure>
+      <figure><img src="/api/pack-preview/style-mochi" loading="lazy" alt="软糯手办画风示例"><figcaption>软糯手办</figcaption></figure>
+      <figure><img src="/api/pack-preview/style-pixel" loading="lazy" alt="像素画风示例"><figcaption>像素</figcaption></figure>
+    </div>
+    <p class="hint" style="margin-top:8px">生成完成后点「换个画风再来一套」，同一套梗一键换宇宙。</p>
   </div>
 
   <div class="card">
     <div class="label">和 AI 策划聊聊你的需求</div>
+    <div class="presets" id="presets">
+      <button data-p="给我和对象做一套日常互动表情包，我们互相叫对方宝，常说「哄我」「奖励你」">情侣专属</button>
+      <button data-p="给我家猫做一套表情包，它特别傲娇，最爱半夜跑酷和打翻水杯">宠物主子</button>
+      <button data-p="我是一个品牌主理人，想给品牌吉祥物做一套发粉丝群的表情包">品牌吉祥物</button>
+      <button data-p="把我的口头禅做成表情包，我常说「问题不大」「稳了」「摆烂中」">个人口头禅</button>
+      <button data-p="给我们闺蜜群做一套表情包，我们爱互相吐槽也爱互相投喂">闺蜜群专用</button>
+    </div>
     <div class="chatbox" id="chatbox">
       <div class="bub ai">嗨！想定制什么样的表情包？说说给谁用、什么场合、有什么口头禅～</div>
     </div>
@@ -205,6 +235,10 @@ async function agentMakeDraft() {
   }
   $('agentDraft').disabled = false;
 }
+
+document.querySelectorAll('#presets button').forEach(b => {
+  b.onclick = () => { $('agentInput').value = b.dataset.p; agentSend(); };
+});
 
 $('agentSend').onclick = agentSend;
 $('agentDraft').onclick = agentMakeDraft;

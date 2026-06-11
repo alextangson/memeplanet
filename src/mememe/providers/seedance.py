@@ -61,7 +61,7 @@ class SeedanceVideoProvider:
             f"{self._base_url}/api/v3/contents/generations/tasks",
             headers=headers,
             json=build_video_payload(prompt, image, model=self._model),
-            timeout=60,
+            timeout=60, trust_env=False,
         )
         task_id = extract_task_id(resp.json())
 
@@ -71,11 +71,11 @@ class SeedanceVideoProvider:
             status = httpx.get(
                 f"{self._base_url}/api/v3/contents/generations/tasks/{task_id}",
                 headers=headers,
-                timeout=30,
+                timeout=30, trust_env=False,
             ).json()
             url = extract_video_url(status)
             if url:
-                video = httpx.get(url, timeout=120, follow_redirects=True)
+                video = httpx.get(url, timeout=120, follow_redirects=True, trust_env=False)
                 video.raise_for_status()
                 return video.content
         raise RuntimeError(f"Seedance task timed out after {timeout}s")
