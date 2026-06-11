@@ -496,6 +496,9 @@ _INDEX_HTML = """<!DOCTYPE html>
   .drop img { max-height: 110px; border-radius: 10px; display: block; margin: 0 auto 10px; }
   .privacy { font-size: 12px; color: #bbb; text-align: center; margin-top: 8px; }
   .packs { display: flex; gap: 10px; overflow-x: auto; padding: 2px 2px 6px; }
+  .packs, .hist { cursor: grab; user-select: none; -webkit-user-select: none; }
+  .packs:active, .hist:active { cursor: grabbing; }
+  .packs img, .hist img { -webkit-user-drag: none; }
   .pack { min-width: 138px; border: 2px solid #eee0d2; border-radius: 14px; padding: 12px;
           cursor: pointer; font-size: 15px; font-weight: 600; transition: .15s; background:#fffdfa; }
   .pack:hover { border-color: #c97b4a; }
@@ -769,6 +772,28 @@ function openJob(id) {
   startPoll();
   window.scrollTo({ top: $('resultCard').offsetTop - 12, behavior: 'smooth' });
 }
+
+function makeDraggable(el) {
+  let down = false, startX = 0, startLeft = 0, moved = false;
+  el.addEventListener('pointerdown', (e) => {
+    down = true; moved = false; startX = e.clientX; startLeft = el.scrollLeft;
+    el.setPointerCapture(e.pointerId);
+  });
+  el.addEventListener('pointermove', (e) => {
+    if (!down) return;
+    const dx = e.clientX - startX;
+    if (Math.abs(dx) > 5) { moved = true; el.scrollLeft = startLeft - dx; }
+  });
+  ['pointerup', 'pointercancel'].forEach(ev => el.addEventListener(ev, () => { down = false; }));
+  el.addEventListener('click', (e) => {
+    if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; }
+  }, true);
+  el.addEventListener('wheel', (e) => {
+    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { el.scrollLeft += e.deltaY; e.preventDefault(); }
+  }, { passive: false });
+}
+makeDraggable($('packs'));
+makeDraggable($('hist'));
 
 loadHistory();
 </script>
