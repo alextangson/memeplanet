@@ -7,6 +7,13 @@ same identity instruction, paired with the same reference photo at call time.
 from mememe.core.schema import Meme, Pack
 from mememe.core.styles import CAPTION_STYLES, STYLES
 
+_CAPTION_VARIANTS = [
+    "大号中文手写体，字色深、带白色描边，端正居中。",
+    "超粗黑体大字，白色描边外加细黑外框，冲击力强。",
+    "活泼的手写体，字略带倾斜、大小错落，深色带白边。",
+    "圆润的卡通手绘字体，彩色描边，俏皮可爱。",
+]
+
 _IDENTITY_BLOCKS = {
     "person": """人物必须与参考照片中是同一个人：保持发型、脸型、肤色、眼镜/配饰、
 服装等标志性特征，整套表情包中角色形象完全一致。""",
@@ -62,6 +69,12 @@ def compile_meme(
         )
     if caption_style and caption_style in CAPTION_STYLES:
         prompt += "\n【文字样式】画面文案改用：" + CAPTION_STYLES[caption_style]["block"]
+    else:
+        idx = next((i for i, m in enumerate(pack.memes) if m.id == meme.id), 0)
+        prompt += (
+            "\n【文字样式】画面文案改用："
+            + _CAPTION_VARIANTS[idx % len(_CAPTION_VARIANTS)]
+        )
     return prompt
 
 

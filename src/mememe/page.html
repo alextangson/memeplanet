@@ -177,6 +177,9 @@
   footer.site a { color: var(--ink-2); text-decoration: none; }
   footer.site a:hover { color: var(--accent); }
 
+  dialog#styleDlg { border: 2px solid var(--ink); border-radius: var(--r); padding: 20px; width: min(92vw, 380px); }
+  dialog#styleDlg::backdrop { background: rgba(26,21,5,.4); }
+  dialog#styleDlg h3 { font-size: 15px; margin-bottom: 10px; }
   dialog#ask { border: 2px solid var(--ink); border-radius: var(--r); padding: 20px; width: min(92vw, 380px); }
   dialog#ask::backdrop { background: rgba(26,21,5,.4); }
   dialog#ask h3 { font-size: 15px; margin-bottom: 12px; }
@@ -202,7 +205,7 @@
       表情星球
     </a>
     <span class="sp"></span>
-    <a class="nl hideS" href="#custom">AI定制</a>
+    <a class="nl hideS" href="/custom">AI 定制</a>
     <a class="nl hideS" href="https://github.com/alextangson/meme-me/blob/main/docs/wechat-platform.md" target="_blank" rel="noopener">上架教程</a>
     <a class="nl" href="https://github.com/alextangson/meme-me" target="_blank" rel="noopener">GitHub</a>
   </nav>
@@ -226,44 +229,17 @@
     <div class="label"><span class="n">1</span>上传照片 · 自拍 / 宠物 / 合照</div>
     <div class="drop" id="drop" role="button" tabindex="0">点击选择照片，做你的专属小形象</div>
     <input type="file" id="file" accept="image/*" hidden>
-    <p class="privacy">照片只存在内存里，生成完即弃，不写入磁盘、不上传留存</p>
+    <p class="privacy">照片仅用于本次生成，不存储、不留底</p>
   </div>
 
   <div class="card">
-    <div class="label"><span class="n">2</span>选一套梗剧本</div>
+    <div class="label"><span class="n">2</span>选一套梗剧本（没有合适的？<a href="/custom" style="color:var(--accent)">AI 定制 →</a>）</div>
     <input class="search" id="psearch" type="search" placeholder="搜剧本或梗：摸鱼 / 拿来吧你 / 想你了…" aria-label="搜索梗剧本">
     <div class="packgrid" id="packs"></div>
   </div>
 
-  <div class="card" id="custom">
-    <div class="label"><span class="n">+</span>没有合适的？让 AI 策划聊一套专属的</div>
-    <h2 class="sec" style="font-size:15px;margin-bottom:8px">个人 · 情侣 · 宠物 · 品牌 IP 都能定制</h2>
-    <div class="chatbox" id="chatbox">
-      <div class="bub ai">嗨！想定制什么样的表情包？说说给谁用、什么场合～</div>
-    </div>
-    <div class="row" style="margin-top:10px">
-      <input class="search" id="agentInput" style="margin:0;flex:1" placeholder="比如：给我和对象的日常互动表情…" aria-label="描述定制需求">
-      <button class="btn" id="agentSend" aria-label="发送"><svg viewBox="0 0 24 24"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4Z"/></svg></button>
-      <button class="btn primary" id="agentDraft">生成剧本</button>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="label"><span class="n">3</span>挑画风，开始生成</div>
-    <div class="row" style="margin-bottom:14px">
-      <label class="opt">画风
-        <select id="styleSel" aria-label="选择画风"><option value="">经典贴纸（默认）</option></select>
-      </label>
-      <label class="opt">文字
-        <select id="capSel" aria-label="选择文字样式"><option value="">手写体（默认）</option></select>
-      </label>
-      <label class="opt">模型
-        <select id="prov" aria-label="选择生成模型">
-          <option value="gemini">Gemini（中转）</option>
-          <option value="seedream">即梦 Seedream</option>
-        </select>
-      </label>
-    </div>
+    <div class="card">
+    <div class="label"><span class="n">3</span>开始生成</div>
     <button class="btn primary big" id="go" disabled>做我的专属表情包</button>
     <p class="privacy" id="goHint">先免费出 8 张 · 约 90 秒逐张揭晓 · 满意再解锁全套</p>
   </div>
@@ -279,6 +255,12 @@
     </div>
     <p class="hint">把鼠标移到任意一张上：换一张（可改文案）· 让它动起来（可指定动作）<br>
     手机上：长按图片保存 → 微信发给自己 → 长按「添加到表情」</p>
+    <div class="actions" id="resultHooks" style="display:none">
+      <button class="btn" id="restyleBtn">
+        <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9c0-1-1.5-1.5-2.5-1-1.2.6-2.5-.3-2.5-1.5 0-.8.6-1.5 1.4-1.6L19 7.7A9 9 0 0 0 12 3z"/><circle cx="8" cy="10" r="1.2"/><circle cx="12" cy="7.5" r="1.2"/></svg>
+        换个画风再来一套</button>
+      <a class="btn" href="/custom">这套不够戳你？AI 定制专属剧本 →</a>
+    </div>
     <div class="actions" id="resultActions" style="display:none">
       <a class="btn" id="platformBtn" href="#" download>
         <svg viewBox="0 0 24 24"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
@@ -317,13 +299,13 @@
       <dt>怎么用自己的照片做微信表情包？</dt>
       <dd>上传一张正脸自拍（宠物照、合照也行），选一套梗剧本，AI 自动生成 16 个人设一致的表情，长按保存就能导入微信。</dd>
       <dt>我的照片安全吗？</dt>
-      <dd>照片只在生成期间存在内存里，从不写入磁盘；历史记录只保留生成结果，不留原图。生成走你配置的模型服务。</dd>
+      <dd>照片仅在生成期间临时使用，不存储、不留底；历史记录只保留生成结果，不保留你的原图。</dd>
       <dt>可以做宠物 / 情侣表情包吗？</dt>
       <dd>可以。上传宠物照做宠物表情包，上传两人合照做情侣表情包，AI 会保持每个角色一致。</dd>
       <dt>生成的表情包能上架微信表情商店吗？</dt>
       <dd>能。生成全套后点「导出上架素材包」，规格齐全，照 <a href="https://github.com/alextangson/meme-me/blob/main/docs/wechat-platform.md" target="_blank" rel="noopener">上架指南</a> 提交到微信表情开放平台即可。</dd>
       <dt>品牌 / IP 想批量定制专属表情？</dt>
-      <dd>用上面的 AI 策划聊出专属剧本就是起点；商用授权、高清源文件与代上架，<a href="https://github.com/alextangson/meme-me/issues" target="_blank" rel="noopener">来 GitHub 聊</a>。</dd>
+      <dd>去 <a href="/custom">AI 定制页</a> 聊出专属剧本就是起点；商用授权、高清源文件与代上架，在定制页留下联系方式即可。</dd>
     </dl>
   </div>
 
@@ -336,10 +318,15 @@
   <footer class="site">
     <a href="https://github.com/alextangson/meme-me" target="_blank" rel="noopener">开源 GitHub</a> ·
     <a href="https://github.com/alextangson/meme-me/blob/main/docs/wechat-platform.md" target="_blank" rel="noopener">上架指南</a> ·
-    Apache-2.0<br>表情星球 meme-me · 本地运行，你的照片不出这台电脑（生成调用除外）
+    Apache-2.0<br>表情星球 meme-me · 照片仅用于本次生成，不存储、不留底
   </footer>
 </div>
 
+<dialog id="styleDlg">
+  <h3>换个画风，同一套梗再来一遍</h3>
+  <div id="styleList" class="row" style="flex-direction:column;align-items:stretch;gap:8px;margin-top:4px"></div>
+  <div class="row"><button class="btn" id="styleCancel">取消</button></div>
+</dialog>
 <dialog id="ask">
   <h3 id="askTitle"></h3>
   <input id="askInput" type="text">
@@ -352,7 +339,7 @@
 
 <script>
 const $ = (id) => document.getElementById(id);
-let selfie = null, packId = null, jobId = null, timer = null, agentDraftId = '';
+let selfie = null, packId = null, jobId = null, timer = null, currentStyle = '';
 
 const ICONS = {
   refresh: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 2v6h-6"/><path d="M21 8a9 9 0 1 0 2.4 8"/></svg>',
@@ -406,7 +393,7 @@ function renderPacks(filter) {
   if (!shown.find(p => p.id === packId)) packId = shown.length ? shown[0].id : null;
   box.innerHTML = '';
   if (!shown.length) {
-    box.innerHTML = '<p class="hint">没有匹配的剧本——用上面的 AI 策划定制一套，或去 GitHub 投稿。</p>';
+    box.innerHTML = '<p class="hint">没有找到？<a href="/custom">让 AI 给你定制一套 →</a></p>';
     return;
   }
   shown.forEach(p => {
@@ -434,14 +421,8 @@ function refreshPacks(selectId) {
   });
 }
 
-refreshPacks();
+refreshPacks(new URLSearchParams(location.search).get('pack') || undefined);
 $('psearch').oninput = (e) => renderPacks(e.target.value);
-
-// ---- 画风 ----
-fetch('/api/styles').then(r => r.json()).then(d => {
-  d.styles.forEach(s => $('styleSel').add(new Option(`${s.name} · ${s.desc}`, s.id)));
-  d.caption_styles.forEach(s => $('capSel').add(new Option(`${s.name} · ${s.desc}`, s.id)));
-});
 
 // ---- 上传 ----
 $('drop').onclick = () => $('file').click();
@@ -462,15 +443,14 @@ $('go').onclick = async () => {
   const fd = new FormData();
   fd.append('selfie', selfie);
   fd.append('pack_id', packId);
-  fd.append('provider', $('prov').value);
-  fd.append('style', $('styleSel').value);
-  fd.append('caption_style', $('capSel').value);
+  if (currentStyle) fd.append('style', currentStyle);
   const resp = await fetch('/api/generate', { method: 'POST', body: fd });
   if (!resp.ok) { showToast(await resp.text()); $('go').disabled = false; return; }
   jobId = (await resp.json()).job_id;
   $('resultCard').style.display = 'block';
   $('collageCard').style.display = 'none';
   $('resultActions').style.display = 'none';
+  $('resultHooks').style.display = 'none';
   $('unlockZone').style.display = 'none';
   $('grid').innerHTML = '';
   $('resultCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -496,6 +476,8 @@ async function poll() {
     if (job.error) showToast(job.error);
     $('unlockZone').style.display = (job.status === 'done' && job.images.length === 8) ? 'flex' : 'none';
     $('resultActions').style.display = doneCount ? 'flex' : 'none';
+    $('resultHooks').style.display = doneCount ? 'flex' : 'none';
+    $('restyleBtn').style.display = selfie ? '' : 'none';
     $('platformBtn').href = `/api/jobs/${jobId}/platform-pack`;
   } else {
     $('unlockZone').style.display = 'none';
@@ -610,68 +592,30 @@ $('unlockBtn').onclick = async () => {
   startPoll();
 };
 
-// ---- AI 策划 ----
-function bubble(text, cls) {
-  const box = $('chatbox');
-  const div = document.createElement('div');
-  div.className = 'bub ' + cls;
-  div.textContent = text;
-  box.appendChild(div);
-  box.scrollTop = box.scrollHeight;
-  return div;
-}
-
-async function agentSend() {
-  const text = $('agentInput').value.trim();
-  if (!text) return;
-  $('agentInput').value = '';
-  bubble(text, 'me');
-  const busy = bubble('策划思考中…', 'ai busy');
-  $('agentSend').disabled = true;
-  const fd = new FormData();
-  fd.append('message', text);
-  if (agentDraftId) fd.append('draft_id', agentDraftId);
-  try {
-    const resp = await fetch('/api/agent/chat', { method: 'POST', body: fd });
-    const data = await resp.json();
-    if (!resp.ok) throw new Error(data.detail || resp.status);
-    agentDraftId = data.draft_id;
-    busy.className = 'bub ai';
-    busy.textContent = data.reply;
-  } catch (e) {
-    busy.className = 'bub ai';
-    busy.textContent = '出错了：' + e.message;
+// ---- 换画风 ----
+let stylesLoaded = false;
+$('restyleBtn').onclick = async () => {
+  if (!stylesLoaded) {
+    const d = await (await fetch('/api/styles')).json();
+    const list = $('styleList');
+    const all = [{ id: '', name: '经典贴纸', desc: '默认风格，重抽一套' }, ...d.styles];
+    all.forEach(s => {
+      const b = document.createElement('button');
+      b.className = 'btn';
+      b.textContent = `${s.name} · ${s.desc}`;
+      b.onclick = () => { $('styleDlg').close(); restyle(s.id); };
+      list.appendChild(b);
+    });
+    stylesLoaded = true;
   }
-  $('agentSend').disabled = false;
-}
+  $('styleDlg').showModal();
+};
+$('styleCancel').onclick = () => $('styleDlg').close();
 
-async function agentMakeDraft() {
-  if (!agentDraftId) { bubble('先说说你的需求，聊一两句我才好出方案～', 'ai'); return; }
-  const busy = bubble('正在写剧本（约 20 秒）…', 'ai busy');
-  $('agentDraft').disabled = true;
-  const fd = new FormData();
-  fd.append('draft_id', agentDraftId);
-  try {
-    const resp = await fetch('/api/agent/draft', { method: 'POST', body: fd });
-    const data = await resp.json();
-    if (!resp.ok) throw new Error(data.detail || resp.status);
-    busy.className = 'bub ai';
-    busy.textContent = `「${data.name}」写好了！前 8 个梗：${data.captions.join('、')}。已加入剧本列表（带「定制」标），不满意继续聊，再点生成会出新版本。`;
-    await refreshPacks(data.pack_id);
-    $('packs').scrollIntoView({ behavior: 'smooth', block: 'center' });
-    setTimeout(() => refreshPacks(packId), 25000);
-  } catch (e) {
-    busy.className = 'bub ai';
-    busy.textContent = '生成失败：' + e.message;
-  }
-  $('agentDraft').disabled = false;
+async function restyle(styleId) {
+  currentStyle = styleId;
+  $('go').click();
 }
-
-$('agentSend').onclick = agentSend;
-$('agentDraft').onclick = agentMakeDraft;
-$('agentInput').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); agentSend(); }
-});
 
 // ---- 历史 ----
 async function loadHistory() {

@@ -477,3 +477,22 @@ def test_extend_blocked_without_selfie(client):
     job_id = _animated_job(client)
     fresh = TestClient(webapp.create_app())
     assert fresh.post(f"/api/jobs/{job_id}/extend").status_code == 409
+
+
+def test_custom_page_served(client):
+    resp = client.get("/custom")
+    assert resp.status_code == 200
+    assert "定制" in resp.text
+
+
+def test_leads_endpoint_appends_jsonl(client, tmp_path, monkeypatch):
+    lead_file = tmp_path / "leads.jsonl"
+    monkeypatch.setattr(webapp, "LEADS_FILE", lead_file)
+    resp = client.post(
+        "/api/leads", data={"contact": "wx: hello123", "need": "品牌吉祥物一套"}
+    )
+    assert resp.status_code == 200
+    import json as _json
+
+    line = _json.loads(lead_file.read_text().strip())
+    assert line["contact"] == "wx: hello123"

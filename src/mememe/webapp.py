@@ -34,6 +34,7 @@ from mememe.core.schema import Pack, load_pack
 from mememe.providers.base import ImageProvider
 
 OUTPUT_ROOT = Path("out/web")
+LEADS_FILE = Path("out/leads.jsonl")
 PACKS_DIR = Path(os.environ.get("MEMEME_PACKS_DIR", "packs"))
 CUSTOM_PACKS_DIR = Path(os.environ.get("MEMEME_CUSTOM_PACKS_DIR", "packs/custom"))
 DEFAULT_QR_URL = "https://github.com/alextangson/meme-me"
@@ -376,6 +377,20 @@ def create_app() -> FastAPI:
     def index() -> str:
         return _INDEX_HTML
 
+    @app.get("/custom", response_class=HTMLResponse)
+    def custom_page() -> str:
+        return _CUSTOM_HTML
+
+    @app.post("/api/leads")
+    def leads(contact: str = Form(...), need: str = Form("")) -> dict:
+        LEADS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with LEADS_FILE.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(
+                {"contact": contact, "need": need, "ts": time.time()},
+                ensure_ascii=False,
+            ) + "\n")
+        return {"ok": True}
+
     @app.get("/api/packs")
     def list_packs() -> list[dict]:
         packs = []
@@ -713,3 +728,4 @@ def create_app() -> FastAPI:
 
 
 _INDEX_HTML = (Path(__file__).parent / "page.html").read_text(encoding="utf-8")
+_CUSTOM_HTML = (Path(__file__).parent / "custom.html").read_text(encoding="utf-8")

@@ -38,3 +38,22 @@ def test_unknown_style_ignored():
     assert compile_meme(pack, pack.memes[0], style="nope") == compile_meme(
         pack, pack.memes[0]
     )
+
+
+def test_default_caption_rendering_varies_by_meme_index():
+    pack = load_pack(PACKS_DIR / "shechu.yaml")
+    p0 = compile_meme(pack, pack.memes[0])
+    p1 = compile_meme(pack, pack.memes[1])
+    assert "【文字样式】" in p0 and "【文字样式】" in p1
+    assert p0.split("【文字样式】")[1] != p1.split("【文字样式】")[1]
+    # 轮换有周期：第 0 与第 4 个相同
+    p4 = compile_meme(pack, pack.memes[4])
+    assert p0.split("【文字样式】")[1] == p4.split("【文字样式】")[1]
+
+
+def test_explicit_caption_style_is_uniform():
+    pack = load_pack(PACKS_DIR / "shechu.yaml")
+    p0 = compile_meme(pack, pack.memes[0], caption_style="bold")
+    p1 = compile_meme(pack, pack.memes[1], caption_style="bold")
+    assert p0.split("【文字样式】")[1] == p1.split("【文字样式】")[1]
+    assert CAPTION_STYLES["bold"]["block"] in p0
