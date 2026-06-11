@@ -100,3 +100,16 @@ def test_motion_override_replaces_default():
     assert "疯狂挥手再见" in compile_motion(pack, meme, motion_override="疯狂挥手再见")
     assert meme.action not in compile_motion(pack, meme, motion_override="疯狂挥手再见")
     assert "疯狂挥手再见" in compile_keyframe(pack, meme, motion_override="疯狂挥手再见")
+
+
+def test_group_pack_identity_block():
+    from mememe.core.schema import Pack
+
+    base = {
+        "id": "t", "name": "测试", "style": "贴纸风", "subject": "group",
+        "memes": [{"id": "a", "caption": "好", "expression": "笑",
+                   "action": "站", "shot": "半身"}],
+    }
+    prompt = compile_pack(Pack.model_validate(base))[0]
+    assert "所有人" in prompt and "各自" in prompt
+    assert "人物组合" in prompt

@@ -24,7 +24,7 @@ class Pack(BaseModel):
     description: str = ""
     version: int = 1
     language: str = "zh"
-    subject: Literal["person", "pet"] = "person"
+    subject: Literal["person", "pet", "group"] = "person"
     subject_desc: str = ""  # 主角外观描述，定制包用于无照片的风格预览
     style: str = Field(min_length=1)
     memes: list[Meme] = Field(min_length=1)

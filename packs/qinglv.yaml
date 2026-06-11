@@ -1,0 +1,114 @@
+# 情侣日常 — 上传你俩的合照。互怼和发糖各占一半，谁发都合适。
+
+id: qinglv
+name: 情侣日常
+description: 上传你俩的合照——互怼一半、发糖一半的 16 个同框瞬间
+version: 1
+language: zh
+subject: group
+
+style: |
+  Q版三头身（chibi）贴纸插画风格，粗白色描边，背景必须纯白。
+  两人必须都与参考照片一致并贯穿全套：各自的发型、脸型、眼镜/配饰、
+  服装、相对身高，一眼能认出是这两个人。
+  两人的互动是画面核心，肢体语言生动，表情夸张。
+  文案以大号中文手写体渲染在画面下方居中，字色深、带白边，清晰可读。
+
+memes:
+  # ---- 免费层 ----
+  - id: nikankanni
+    caption: 你看看你
+    expression: 一人叉腰恨铁不成钢，另一人无辜眨眼
+    action: 一人手指点向对方，对方缩脖子装傻
+    shot: 全身
+
+  - id: nalaibani
+    caption: 拿来吧你
+    expression: 一人理直气壮，另一人护食般抗拒
+    action: 一人伸手夺对方手里的奶茶，对方扭身护住
+    shot: 半身
+
+  - id: shei-xian-ditou
+    caption: 谁先低头
+    expression: 两人都鼓着腮帮子别过脸，眼角偷瞄对方
+    action: 背对背抱臂坐着，中间隔一条缝
+    shot: 全身
+
+  - id: hongwo
+    caption: 快哄我
+    expression: 一人撅嘴假哭，另一人手忙脚乱
+    action: 一人坐地耍赖，另一人递糖递纸巾团团转
+    shot: 全身
+
+  - id: yiqi-ganfan
+    caption: 干饭啦
+    expression: 两人同步两眼放光
+    action: 并排举筷冲向同一桌菜，动作完全同步
+    shot: 全身
+
+  - id: tingni-de
+    caption: 听你的
+    expression: 一人举双手投降式微笑，另一人得意挑眉
+    action: 一人比 OK，另一人叉腰仰头
+    shot: 半身
+
+  - id: baoyixia
+    caption: 抱一下
+    expression: 两人都幸福眯眼
+    action: 一人张开双臂，另一人助跑飞扑
+    shot: 全身
+
+  - id: zai-gan-ma
+    caption: 在干嘛
+    expression: 一人探头好奇，另一人吓一跳
+    action: 一人从对方身后突然冒头，对方手机飞起
+    shot: 半身
+
+  # ---- 付费层 ----
+  - id: shei-de-cuo
+    caption: 都是你的错
+    expression: 两人同时指向对方，互相瞪眼
+    action: 面对面互指，火花特效
+    shot: 全身
+
+  - id: xiang-ni-le
+    caption: 想你了
+    expression: 两人各自捧脸冒爱心
+    action: 隔着一条虚线两端对望，爱心飞过去
+    shot: 全身
+
+  - id: jiandao
+    caption: 剪刀石头布
+    expression: 一人狂喜一人崩溃
+    action: 一人出剪刀赢了跳起来，另一人石头跪地
+    shot: 全身
+
+  - id: shui-jiao
+    caption: 睡了睡了
+    expression: 一人困到闭眼，另一人还精神
+    action: 一人已躺平流口水，另一人还举着手机
+    shot: 全身俯视
+
+  - id: gei-ni-da
+    caption: 给你买的
+    expression: 一人献宝期待，另一人惊喜捂嘴
+    action: 一人双手递出礼物盒，另一人眼睛冒星星
+    shot: 半身
+
+  - id: bie-wan-shouji
+    caption: 别玩手机了
+    expression: 一人嫌弃瞪眼，另一人心虚假笑
+    action: 一人伸手按下对方的手机，对方还在偷瞄屏幕
+    shot: 半身
+
+  - id: chudui
+    caption: 出发！
+    expression: 两人都斗志昂扬
+    action: 背包牵手向前冲，身后烟尘特效
+    shot: 全身侧视
+
+  - id: yongyuan-zui-hao
+    caption: 最好的我们
+    expression: 两人灿烂大笑
+    action: 背靠背比心，头顶大爱心
+    shot: 全身

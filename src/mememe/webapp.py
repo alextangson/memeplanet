@@ -120,6 +120,8 @@ class Job:
     pack_name: str = ""
     created_at: float = 0.0
     provider_name: str = ""
+    style: str = ""
+    caption_style: str = ""
     status: str = "running"
     error: str = ""
     images: list[dict] = field(default_factory=list)
@@ -146,6 +148,8 @@ def _save_meta(job: Job) -> None:
             "pack_name": job.pack_name,
             "full": job.full,
             "provider_name": job.provider_name,
+            "style": job.style,
+            "caption_style": job.caption_style,
             "status": job.status,
             "error": job.error,
             "created_at": job.created_at,
@@ -186,6 +190,8 @@ def _load_jobs() -> dict[str, Job]:
             pack_name=meta.get("pack_name", ""),
             created_at=meta.get("created_at", 0.0),
             provider_name=meta.get("provider_name", ""),
+            style=meta.get("style", ""),
+            caption_style=meta.get("caption_style", ""),
             status=status,
             error=meta.get("error", ""),
             images=meta.get("images", []),
@@ -221,7 +227,12 @@ def _run_generation(job: Job, provider: ImageProvider) -> None:
             index = pos + 1
             with job.lock:
                 job.images[pos]["status"] = "running"
-            raw = provider.generate(compile_meme(job.pack, meme), job.selfie)
+            raw = provider.generate(
+                compile_meme(
+                    job.pack, meme, style=job.style, caption_style=job.caption_style
+                ),
+                job.selfie,
+            )
             _write_one(job, index, raw)
             with job.lock:
                 job.images[pos]["status"] = "done"
@@ -297,7 +308,13 @@ def _run_retry(
     pos = index - 1
     try:
         meme = job.pack.memes[pos]
-        prompt = compile_meme(job.pack, meme, caption_override=caption)
+        prompt = compile_meme(
+            job.pack,
+            meme,
+            caption_override=caption,
+            style=job.style,
+            caption_style=job.caption_style,
+        )
         raw = provider.generate(prompt, job.selfie)
         _write_one(job, index, raw)
         with job.lock:
@@ -359,9 +376,24 @@ def create_app() -> FastAPI:
                     }
                 )
         # 自己的定制包最前，旗舰其次，新投稿按字母序殿后
-        order = {"shechu": 0, "maomi": 1, "gouzi": 2, "yinyang": 3, "lianai": 4, "ganfan": 5, "qimo": 6, "hajimi": 7}
+        order = {"shechu": 0, "qinglv": 1, "maomi": 2, "gouzi": 3, "yinyang": 4, "lianai": 5, "ganfan": 6, "qimo": 7, "hajimi": 8}
         packs.sort(key=lambda p: (not p["custom"], order.get(p["id"], 99), p["id"]))
         return packs
+
+    @app.get("/api/styles")
+    def list_styles() -> dict:
+        from mememe.core.styles import CAPTION_STYLES, STYLES
+
+        return {
+            "styles": [
+                {"id": k, "name": v["name"], "desc": v["desc"]}
+                for k, v in STYLES.items()
+            ],
+            "caption_styles": [
+                {"id": k, "name": v["name"], "desc": v["desc"]}
+                for k, v in CAPTION_STYLES.items()
+            ],
+        }
 
     drafts: dict[str, list] = {}
 
@@ -431,6 +463,8 @@ def create_app() -> FastAPI:
         pack_id: str = Form(...),
         full: bool = Form(False),
         provider: str = Form(""),
+        style: str = Form(""),
+        caption_style: str = Form(""),
     ) -> dict:
         pack_path = _find_pack_path(pack_id)
         if pack_path is None:
@@ -445,6 +479,8 @@ def create_app() -> FastAPI:
             selfie=selfie.file.read(),
             out_dir=out_dir,
             full=full,
+            style=style,
+            caption_style=caption_style,
             pack_id=pack_id,
             pack_name=pack.name,
             created_at=time.time(),
@@ -586,6 +622,29 @@ def create_app() -> FastAPI:
             headers={"X-Lan-Url": url},
         )
 
+    @app.get("/api/jobs/{job_id}/platform-pack")
+    def platform_pack(job_id: str) -> Response:
+        from mememe.core.platform import build_platform_zip
+
+        job = jobs.get(job_id)
+        if job is None:
+            raise HTTPException(404, "job not found")
+        stickers = []
+        for i in range(1, len(job.images) + 1):
+            path = job.out_dir / f"{_sticker_stem(job, i)}.png"
+            if path.exists():
+                stickers.append(path.read_bytes())
+        if not stickers:
+            raise HTTPException(409, "这套还没有生成完成的表情")
+        blob = build_platform_zip(stickers, pack_name=job.pack_name or "表情包")
+        return Response(
+            content=blob,
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": f'attachment; filename="platform-{job_id}.zip"'
+            },
+        )
+
     @app.get("/files/{job_id}/{filename}")
     def files(job_id: str, filename: str) -> FileResponse:
         job = jobs.get(job_id)
@@ -724,7 +783,7 @@ _INDEX_HTML = """<!DOCTYPE html>
   </div>
 
   <div class="card">
-    <div class="label">1 · 上传一张正脸自拍 / 主子的萌照</div>
+    <div class="label">1 · 上传照片：自拍 / 主子萌照 / 你俩的合照</div>
     <div class="drop" id="drop" onclick="document.getElementById('file').click()">📷 点击选择照片（人或宠物都行）</div>
     <input type="file" id="file" accept="image/*" hidden>
     <div class="privacy">照片只存在内存里，服务停止即消失</div>

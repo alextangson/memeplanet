@@ -5,14 +5,18 @@ same identity instruction, paired with the same reference photo at call time.
 """
 
 from mememe.core.schema import Meme, Pack
+from mememe.core.styles import CAPTION_STYLES, STYLES
 
 _IDENTITY_BLOCKS = {
     "person": """人物必须与参考照片中是同一个人：保持发型、脸型、肤色、眼镜/配饰、
 服装等标志性特征，整套表情包中角色形象完全一致。""",
     "pet": """宠物必须与参考照片中是同一只：保持毛色、花纹、品种特征、体型、
 项圈等配饰，整套表情包中形象完全一致。""",
+    "group": """参考照片中的所有人都必须出现，并保持各自的标志性特征
+（发型、脸型、肤色、眼镜/配饰、服装、相对身高体型），整套表情包中
+每个人的形象完全一致，人物之间的互动关系生动自然。""",
 }
-_SUBJECT_WORD = {"person": "人物", "pet": "宠物"}
+_SUBJECT_WORD = {"person": "人物", "pet": "宠物", "group": "人物组合"}
 
 _PROMPT_TEMPLATE = """\
 基于参考照片中的{subject_word}，生成一张微信表情包贴纸。
@@ -33,8 +37,15 @@ _PROMPT_TEMPLATE = """\
 """
 
 
-def compile_meme(pack: Pack, meme: Meme, caption_override: str | None = None) -> str:
-    return _PROMPT_TEMPLATE.format(
+def compile_meme(
+    pack: Pack,
+    meme: Meme,
+    caption_override: str | None = None,
+    *,
+    style: str | None = None,
+    caption_style: str | None = None,
+) -> str:
+    prompt = _PROMPT_TEMPLATE.format(
         subject_word=_SUBJECT_WORD[pack.subject],
         identity=_IDENTITY_BLOCKS[pack.subject],
         style=pack.style.strip(),
@@ -43,6 +54,15 @@ def compile_meme(pack: Pack, meme: Meme, caption_override: str | None = None) ->
         shot=meme.shot,
         caption=caption_override or meme.caption,
     )
+    if style and style in STYLES:
+        prompt += (
+            "\n【画风指定】整体画风改为：" + STYLES[style]["block"]
+            + "\n（画风以本节为准，上文与画风冲突的视觉描述按本节执行；"
+            "主体一致性、纯白背景、白色描边、文案渲染要求保持不变。）"
+        )
+    if caption_style and caption_style in CAPTION_STYLES:
+        prompt += "\n【文字样式】画面文案改用：" + CAPTION_STYLES[caption_style]["block"]
+    return prompt
 
 
 def compile_pack(pack: Pack) -> list[str]:

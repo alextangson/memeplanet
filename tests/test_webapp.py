@@ -417,3 +417,39 @@ def test_custom_pack_preview_generated_and_served(agent_client, tmp_path, monkey
     packs = agent_client.get("/api/packs").json()
     assert packs[0]["preview_url"] == f"/api/pack-preview/{pack_id}"
     assert agent_client.get(packs[0]["preview_url"]).status_code == 200
+
+
+def test_styles_endpoint(client):
+    data = client.get("/api/styles").json()
+    assert any(s["id"] == "bojack" for s in data["styles"])
+    assert any(c["id"] == "bold" for c in data["caption_styles"])
+
+
+def test_generate_carries_style_through_retry(client, tmp_path):
+    resp = client.post(
+        "/api/generate",
+        files={"selfie": ("me.jpg", _selfie_bytes(), "image/jpeg")},
+        data={"pack_id": "shechu", "style": "bojack", "caption_style": "bold"},
+    )
+    job_id = resp.json()["job_id"]
+    _wait_done(client, job_id)
+    assert any("画风指定" in p for p in client.fake_provider.prompts)
+    assert any("文字样式" in p for p in client.fake_provider.prompts)
+
+    before = len(client.fake_provider.prompts)
+    client.post(f"/api/jobs/{job_id}/retry/1")
+    _wait_done(client, job_id)
+    assert "画风指定" in client.fake_provider.prompts[before]  # 重摇沿用画风
+
+    import json as _json
+
+    meta = _json.loads((tmp_path / job_id / "job.json").read_text())
+    assert meta["style"] == "bojack" and meta["caption_style"] == "bold"
+
+
+def test_platform_pack_download(client):
+    job_id = _animated_job(client)
+    resp = client.get(f"/api/jobs/{job_id}/platform-pack")
+    assert resp.status_code == 200
+    assert resp.content[:2] == b"PK"  # zip magic
+    assert client.get("/api/jobs/nope/platform-pack").status_code == 404
