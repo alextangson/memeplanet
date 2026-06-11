@@ -24,18 +24,22 @@ _EFFECTS = {
 }
 
 
-def _quantize(frame: Image.Image) -> Image.Image:
+def _quantize(frame: Image.Image, colors: int = 255) -> Image.Image:
     alpha = frame.getchannel("A")
-    paletted = frame.convert("RGB").quantize(colors=255, method=Image.MEDIANCUT)
+    paletted = frame.convert("RGB").quantize(colors=min(colors, 255), method=Image.MEDIANCUT)
     mask = alpha.point(lambda a: 255 if a < 128 else 0)
     paletted.paste(255, mask=mask)
     return paletted
 
 
 def frames_to_gif(
-    frames: list[Image.Image], *, fps: int = 8, max_bytes: int = GIF_MAX_BYTES
+    frames: list[Image.Image],
+    *,
+    fps: int = 8,
+    max_bytes: int = GIF_MAX_BYTES,
+    colors: int = 255,
 ) -> bytes:
-    paletted = [_quantize(f.convert("RGBA")) for f in frames]
+    paletted = [_quantize(f.convert("RGBA"), colors) for f in frames]
     buf = io.BytesIO()
     paletted[0].save(
         buf,
@@ -70,28 +74,55 @@ def _ffmpeg(*args: str) -> None:
 
 
 def mp4_to_wechat_gif(
-    mp4: bytes, *, size: int = STICKER_SIZE, max_bytes: int = GIF_MAX_BYTES
+    mp4: bytes,
+    *,
+    size: int = STICKER_SIZE,
+    max_bytes: int = GIF_MAX_BYTES,
+    caption_source: bytes | None = None,
+    caption_frac: float = 0.26,
 ) -> bytes:
+    """Convert video to WeChat GIF.
+
+    caption_source: the finished sticker PNG whose bottom strip (the rendered
+    caption) gets alpha-pasted onto EVERY frame — video models animate text
+    away after a frame or two, so the caption is pinned in post.
+    """
     if shutil.which("ffmpeg") is None:
         raise RuntimeError("动图转换需要 ffmpeg：brew install ffmpeg")
+
+    strip = None
+    strip_top = int(size * (1 - caption_frac))
+    if caption_source:
+        src_img = (
+            Image.open(io.BytesIO(caption_source)).convert("RGBA").resize((size, size))
+        )
+        strip = src_img.crop((0, strip_top, size, size))
+
     with tempfile.TemporaryDirectory() as tmp:
         src = Path(tmp) / "in.mp4"
         src.write_bytes(mp4)
-        palette = Path(tmp) / "palette.png"
-        out = Path(tmp) / "out.gif"
         scale = f"scale={size}:{size}:flags=lanczos"
-        for fps, colors, dur in _LADDER:
+        for attempt, (fps, colors, dur) in enumerate(_LADDER):
+            frame_dir = Path(tmp) / f"frames{attempt}"
+            frame_dir.mkdir()
             _ffmpeg(
                 "-t", str(dur), "-i", str(src),
-                "-vf", f"fps={fps},{scale},palettegen=max_colors={colors}",
-                str(palette),
+                "-vf", f"fps={fps},{scale}",
+                str(frame_dir / "f_%04d.png"),
             )
-            _ffmpeg(
-                "-t", str(dur), "-i", str(src), "-i", str(palette),
-                "-lavfi", f"fps={fps},{scale}[x];[x][1:v]paletteuse=dither=bayer",
-                str(out),
-            )
-            gif = out.read_bytes()
-            if len(gif) <= max_bytes:
-                return gif
+            frames = [
+                Image.open(p).convert("RGBA")
+                for p in sorted(frame_dir.glob("f_*.png"))
+            ]
+            if not frames:
+                raise RuntimeError("视频中提取不到帧")
+            if strip is not None:
+                for frame in frames:
+                    frame.paste(strip, (0, strip_top), strip)
+            try:
+                return frames_to_gif(
+                    frames, fps=fps, max_bytes=max_bytes, colors=colors
+                )
+            except ValueError:
+                continue
     raise ValueError(f"GIF 压不进 {max_bytes} 字节，源视频太复杂")

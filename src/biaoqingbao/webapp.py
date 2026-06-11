@@ -221,7 +221,9 @@ def _make_anim_gif(job: Job, index: int, mode: str, provider) -> bytes:
         return frames_to_gif(frames, fps=5)
     raw = (job.out_dir / f"raw-{stem}.png").read_bytes()
     mp4 = provider.animate(compile_motion(job.pack, job.pack.memes[pos]), raw)
-    return mp4_to_wechat_gif(mp4)
+    return mp4_to_wechat_gif(
+        mp4, caption_source=(job.out_dir / f"{stem}.png").read_bytes()
+    )
 
 
 def _run_animate(job: Job, provider, index: int, mode: str) -> None:

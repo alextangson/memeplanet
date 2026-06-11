@@ -69,3 +69,21 @@ def test_frames_to_gif_two_frame_loop():
     assert img.format == "GIF"
     assert img.n_frames == 2
     assert len(gif) <= 500 * 1024
+
+
+def test_video_gif_keeps_caption_on_every_frame(tiny_mp4):
+    # source sticker: transparent except a distinctive red caption strip at bottom
+    src = Image.new("RGBA", (240, 240), (0, 0, 0, 0))
+    for x in range(240):
+        for y in range(200, 240):
+            src.putpixel((x, y), (255, 0, 0, 255))
+    buf = io.BytesIO()
+    src.save(buf, format="PNG")
+
+    gif = mp4_to_wechat_gif(tiny_mp4, caption_source=buf.getvalue())
+    img = Image.open(io.BytesIO(gif))
+    assert img.n_frames > 1
+    for frame_idx in (0, img.n_frames - 1):  # 首帧和末帧都必须有文案
+        img.seek(frame_idx)
+        r, g, b, a = img.convert("RGBA").getpixel((120, 225))
+        assert r > 180 and g < 90 and b < 90, f"frame {frame_idx} lost caption strip"
