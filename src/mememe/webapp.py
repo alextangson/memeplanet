@@ -290,6 +290,7 @@ def create_app() -> FastAPI:
         packs = []
         for path in sorted(PACKS_DIR.glob("*.yaml")):
             pack = load_pack(path)
+            has_preview = (PACKS_DIR / "previews" / f"{pack.id}.png").exists()
             packs.append(
                 {
                     "id": pack.id,
@@ -297,9 +298,22 @@ def create_app() -> FastAPI:
                     "description": pack.description,
                     "meme_count": len(pack.memes),
                     "captions": [m.caption for m in pack.memes],
+                    "preview_url": f"/api/pack-preview/{pack.id}" if has_preview else "",
                 }
             )
+        # 旗舰在前，新投稿的包按字母序排在后面
+        order = {"shechu": 0, "yinyang": 1, "lianai": 2, "ganfan": 3, "qimo": 4, "hajimi": 5}
+        packs.sort(key=lambda p: (order.get(p["id"], 99), p["id"]))
         return packs
+
+    @app.get("/api/pack-preview/{pack_id}")
+    def pack_preview(pack_id: str) -> FileResponse:
+        if "/" in pack_id or ".." in pack_id:
+            raise HTTPException(404, "not found")
+        path = PACKS_DIR / "previews" / f"{pack_id}.png"
+        if not path.exists():
+            raise HTTPException(404, "not found")
+        return FileResponse(path, media_type="image/png")
 
     @app.post("/api/generate")
     def generate(
@@ -495,16 +509,28 @@ _INDEX_HTML = """<!DOCTYPE html>
   .drop.has { border-style: solid; border-color: #2a9d5c; color: #2a9d5c; }
   .drop img { max-height: 110px; border-radius: 10px; display: block; margin: 0 auto 10px; }
   .privacy { font-size: 12px; color: #bbb; text-align: center; margin-top: 8px; }
-  .packs { display: flex; gap: 10px; overflow-x: auto; padding: 2px 2px 6px; }
-  .packs, .hist { cursor: grab; user-select: none; -webkit-user-select: none; }
-  .packs:active, .hist:active { cursor: grabbing; }
-  .packs img, .hist img { -webkit-user-drag: none; }
-  .pack { min-width: 138px; border: 2px solid #eee0d2; border-radius: 14px; padding: 12px;
-          cursor: pointer; font-size: 15px; font-weight: 600; transition: .15s; background:#fffdfa; }
-  .pack:hover { border-color: #c97b4a; }
-  .pack.sel { border-color: #c9551e; background: #fff3ea; }
-  .pack small { display: block; color: #a89b8d; font-size: 11px; margin-top: 6px;
-                font-weight: 400; line-height: 1.5; }
+  .hist { cursor: grab; user-select: none; -webkit-user-select: none; }
+  .hist:active { cursor: grabbing; }
+  .hist img { -webkit-user-drag: none; }
+  .packsearch { width: 100%; border: 1.5px solid #e5d8ca; border-radius: 10px;
+                padding: 10px 12px; font-size: 14px; margin-bottom: 12px;
+                background: #fffdfa; outline: none; }
+  .packsearch:focus { border-color: #c97b4a; }
+  .packgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  @media (max-width: 560px) { .packgrid { grid-template-columns: repeat(2, 1fr); } }
+  .pcard { border: 2px solid #eee0d2; border-radius: 14px; padding: 10px;
+           cursor: pointer; transition: .15s; background: #fffdfa; }
+  .pcard:hover { border-color: #c97b4a; }
+  .pcard.sel { border-color: #c9551e; background: #fff3ea; }
+  .pcard img { width: 100%; aspect-ratio: 1; object-fit: contain;
+               border-radius: 10px; background: #f6f2ec; }
+  .pname { font-size: 14px; font-weight: 700; margin-top: 8px;
+           display: flex; justify-content: space-between; align-items: baseline; }
+  .pcount { font-size: 10px; color: #b3a392; font-weight: 400; white-space: nowrap; }
+  .pdesc { font-size: 11px; color: #a89b8d; margin-top: 3px; line-height: 1.5; }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
+  .chips span { font-size: 10px; background: #f3e9de; color: #8a6a52;
+                border-radius: 6px; padding: 2px 6px; }
   .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   select { border: 1px solid #ddd; border-radius: 8px; padding: 6px 8px; font-size: 13px; background:#fff; }
   button.go { flex: 1; min-width: 200px; background: linear-gradient(135deg,#e2622b,#c9551e);
@@ -570,7 +596,9 @@ _INDEX_HTML = """<!DOCTYPE html>
 
   <div class="card">
     <div class="label">2 · 选梗剧本</div>
-    <div class="packs" id="packs"></div>
+    <input class="packsearch" id="psearch" type="search"
+           placeholder="🔍 搜剧本或梗：摸鱼 / 阴阳 / 亲亲 / 求过……">
+    <div class="packgrid" id="packs"></div>
   </div>
 
   <div class="card">
@@ -617,17 +645,40 @@ _INDEX_HTML = """<!DOCTYPE html>
 let selfie = null, packId = null, jobId = null, timer = null;
 const $ = (id) => document.getElementById(id);
 
-fetch('/api/packs').then(r => r.json()).then(packs => {
+let allPacks = [];
+
+function renderPacks(filter) {
   const box = $('packs');
-  packs.forEach((p, i) => {
+  const kw = (filter || '').trim().toLowerCase();
+  const shown = allPacks.filter(p => !kw
+    || p.name.toLowerCase().includes(kw)
+    || (p.description || '').toLowerCase().includes(kw)
+    || p.captions.some(c => c.toLowerCase().includes(kw)));
+  if (!shown.find(p => p.id === packId)) packId = shown.length ? shown[0].id : null;
+  box.innerHTML = '';
+  if (!shown.length) {
+    box.innerHTML = '<div class="hint">没有匹配的剧本——欢迎去 GitHub 投稿一套 🙌</div>';
+    return;
+  }
+  shown.forEach(p => {
     const div = document.createElement('div');
-    div.className = 'pack' + (i === 0 ? ' sel' : '');
-    div.innerHTML = `${p.name}<small>${p.description || p.meme_count + ' 个梗'}</small>`;
-    div.onclick = () => { box.querySelectorAll('.pack').forEach(e => e.classList.remove('sel')); div.classList.add('sel'); packId = p.id; };
+    div.className = 'pcard' + (p.id === packId ? ' sel' : '');
+    const chips = p.captions.slice(0, 3).map(c => `<span>${c}</span>`).join('')
+      + `<span>+${p.meme_count - 3}</span>`;
+    div.innerHTML = `${p.preview_url ? `<img src="${p.preview_url}" loading="lazy">` : ''}
+      <div class="pname">${p.name}<span class="pcount">${p.meme_count}梗</span></div>
+      <div class="pdesc">${p.description || ''}</div>
+      <div class="chips">${chips}</div>`;
+    div.onclick = () => { packId = p.id; renderPacks($('psearch').value); };
     box.appendChild(div);
-    if (i === 0) packId = p.id;
   });
+}
+
+fetch('/api/packs').then(r => r.json()).then(packs => {
+  allPacks = packs;
+  renderPacks('');
 });
+$('psearch').oninput = (e) => renderPacks(e.target.value);
 
 $('file').onchange = (e) => {
   selfie = e.target.files[0];
@@ -792,7 +843,6 @@ function makeDraggable(el) {
     if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { el.scrollLeft += e.deltaY; e.preventDefault(); }
   }, { passive: false });
 }
-makeDraggable($('packs'));
 makeDraggable($('hist'));
 
 loadHistory();

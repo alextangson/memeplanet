@@ -281,3 +281,16 @@ def test_frames_on_job_without_raw_rejected(client, tmp_path):
     resp = client.post(f"/api/jobs/{job_id}/animate/1", data={"mode": "frames"})
     assert resp.status_code == 409
     assert "抖一抖" in resp.json()["detail"]
+
+
+def test_packs_expose_preview_url(client):
+    packs = client.get("/api/packs").json()
+    shechu = next(p for p in packs if p["id"] == "shechu")
+    assert shechu["preview_url"] == "/api/pack-preview/shechu"
+    resp = client.get(shechu["preview_url"])
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "image/png"
+
+
+def test_unknown_pack_preview_404(client):
+    assert client.get("/api/pack-preview/nope").status_code == 404
