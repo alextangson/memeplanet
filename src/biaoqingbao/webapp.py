@@ -5,8 +5,10 @@ written to disk and vanishes when the server stops.
 """
 
 import importlib.util
+import json
 import os
 import threading
+import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -58,10 +60,13 @@ def _rembg_available() -> bool:
 @dataclass
 class Job:
     id: str
-    pack: Pack
+    pack: Pack | None
     selfie: bytes
     out_dir: Path
     full: bool
+    pack_id: str = ""
+    pack_name: str = ""
+    created_at: float = 0.0
     provider_name: str = ""
     status: str = "running"
     error: str = ""
@@ -71,11 +76,70 @@ class Job:
 
     @property
     def memes(self):
+        if self.pack is None:
+            return []
         return self.pack.memes if self.full else self.pack.free_memes
 
 
 def _sticker_stem(job: Job, index: int) -> str:
-    return f"{index:02d}-{job.pack.memes[index - 1].id}"
+    return f"{index:02d}-{job.images[index - 1]['id']}"
+
+
+def _save_meta(job: Job) -> None:
+    """Persist job metadata (never the selfie) so history survives restarts."""
+    with job.lock:
+        meta = {
+            "job_id": job.id,
+            "pack_id": job.pack_id,
+            "pack_name": job.pack_name,
+            "full": job.full,
+            "provider_name": job.provider_name,
+            "status": job.status,
+            "error": job.error,
+            "created_at": job.created_at,
+            "images": [dict(i) for i in job.images],
+            "collage_url": job.collage_url,
+        }
+    (job.out_dir / "job.json").write_text(
+        json.dumps(meta, ensure_ascii=False), encoding="utf-8"
+    )
+
+
+def _load_jobs() -> dict[str, Job]:
+    jobs: dict[str, Job] = {}
+    if not OUTPUT_ROOT.exists():
+        return jobs
+    for meta_path in OUTPUT_ROOT.glob("*/job.json"):
+        try:
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            continue
+        pack = None
+        pack_file = PACKS_DIR / f"{meta.get('pack_id', '')}.yaml"
+        if pack_file.exists():
+            try:
+                pack = load_pack(pack_file)
+            except Exception:
+                pack = None
+        status = meta.get("status", "done")
+        if status == "running":  # server died mid-job
+            status = "error"
+        jobs[meta["job_id"]] = Job(
+            id=meta["job_id"],
+            pack=pack,
+            selfie=b"",
+            out_dir=meta_path.parent,
+            full=meta.get("full", False),
+            pack_id=meta.get("pack_id", ""),
+            pack_name=meta.get("pack_name", ""),
+            created_at=meta.get("created_at", 0.0),
+            provider_name=meta.get("provider_name", ""),
+            status=status,
+            error=meta.get("error", ""),
+            images=meta.get("images", []),
+            collage_url=meta.get("collage_url", ""),
+        )
+    return jobs
 
 
 def _write_one(job: Job, index: int, raw: bytes) -> None:
@@ -116,6 +180,7 @@ def _run_generation(job: Job, provider: ImageProvider) -> None:
     except Exception as e:  # surface, don't swallow — UI shows it
         job.status = "error"
         job.error = str(e)
+    _save_meta(job)
 
 
 def _make_anim_gif(job: Job, index: int, mode: str, provider) -> bytes:
@@ -156,6 +221,7 @@ def _run_animate(job: Job, provider, index: int, mode: str) -> None:
         with job.lock:
             job.images[pos]["anim_status"] = "error"
         job.error = str(e)
+    _save_meta(job)
 
 
 def _run_retry(
@@ -176,6 +242,7 @@ def _run_retry(
             job.images[pos]["status"] = "error"
         job.status = "done"
         job.error = str(e)
+    _save_meta(job)
 
 
 def _job_json(job: Job) -> dict:
@@ -184,8 +251,9 @@ def _job_json(job: Job) -> dict:
             "job_id": job.id,
             "status": job.status,
             "error": job.error,
-            "pack": job.pack.name,
-            "total": len(job.memes),
+            "pack_name": job.pack_name,
+            "created_at": job.created_at,
+            "total": len(job.images),
             "images": [dict(img) for img in job.images],
             "collage_url": job.collage_url,
         }
@@ -193,7 +261,7 @@ def _job_json(job: Job) -> dict:
 
 def create_app() -> FastAPI:
     app = FastAPI(title="biaoqingbao")
-    jobs: dict[str, Job] = {}
+    jobs: dict[str, Job] = _load_jobs()
 
     @app.get("/", response_class=HTMLResponse)
     def index() -> str:
@@ -235,6 +303,9 @@ def create_app() -> FastAPI:
             selfie=selfie.file.read(),
             out_dir=out_dir,
             full=full,
+            pack_id=pack_id,
+            pack_name=pack.name,
+            created_at=time.time(),
             provider_name=provider,
         )
         job.images = [
@@ -251,10 +322,31 @@ def create_app() -> FastAPI:
             for i, m in enumerate(job.memes)
         ]
         jobs[job_id] = job
+        _save_meta(job)
         threading.Thread(
             target=_run_generation, args=(job, _make_provider(provider)), daemon=True
         ).start()
         return {"job_id": job_id}
+
+    @app.get("/api/history")
+    def history() -> list[dict]:
+        items = []
+        for job in jobs.values():
+            done = sum(1 for i in job.images if i["status"] == "done")
+            first = next((i["url"] for i in job.images if i.get("url")), "")
+            items.append(
+                {
+                    "job_id": job.id,
+                    "pack_name": job.pack_name,
+                    "created_at": job.created_at,
+                    "total": len(job.images),
+                    "done": done,
+                    "collage_url": job.collage_url,
+                    "thumb": job.collage_url or first,
+                }
+            )
+        items.sort(key=lambda x: x["created_at"], reverse=True)
+        return items
 
     @app.get("/api/jobs/{job_id}")
     def job_status(job_id: str) -> dict:
@@ -268,10 +360,14 @@ def create_app() -> FastAPI:
         job = jobs.get(job_id)
         if job is None:
             raise HTTPException(404, "job not found")
+        if not job.selfie or job.pack is None:
+            raise HTTPException(
+                409, "历史任务的自拍已按隐私策略删除，无法重摇；想换就重新生成一套"
+            )
         if job.status == "running":
             raise HTTPException(409, "job still running")
-        if not 1 <= index <= len(job.memes):
-            raise HTTPException(400, f"index must be 1..{len(job.memes)}")
+        if not 1 <= index <= len(job.images):
+            raise HTTPException(400, f"index must be 1..{len(job.images)}")
         with job.lock:
             job.status = "running"
             job.images[index - 1]["status"] = "running"
@@ -289,8 +385,10 @@ def create_app() -> FastAPI:
             raise HTTPException(404, "job not found")
         if mode not in ("video", "frames", "shake", "bounce"):
             raise HTTPException(400, f"unknown mode: {mode}")
-        if not 1 <= index <= len(job.memes):
-            raise HTTPException(400, f"index must be 1..{len(job.memes)}")
+        if mode in ("video", "frames") and job.pack is None:
+            raise HTTPException(409, "找不到该任务的剧本文件，只能用「抖一抖」")
+        if not 1 <= index <= len(job.images):
+            raise HTTPException(400, f"index must be 1..{len(job.images)}")
         with job.lock:
             img = job.images[index - 1]
             if img["status"] != "done":
@@ -416,6 +514,12 @@ _INDEX_HTML = """<!DOCTYPE html>
   .collage img { width: 100%; border-radius: 14px; border: 1px solid #eee4da; }
   .hint { font-size: 13px; color: #998a7a; line-height: 1.8; margin-top: 10px; }
   .err { color: #c0392b; font-size: 13px; white-space: pre-wrap; margin-top: 8px; }
+  .hist { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+  .hitem { min-width: 116px; max-width: 116px; cursor: pointer; text-align: center;
+           font-size: 12px; color: #6f5d4d; }
+  .hitem img { width: 116px; height: 116px; object-fit: cover; border-radius: 10px;
+               border: 1px solid #eee4da; background: #f6f2ec; }
+  .hitem small { display: block; color: #b3a392; font-size: 10px; margin-top: 2px; }
   .qrbox { display: none; text-align: center; }
   .qrbox img { width: 132px; height: 132px; }
   @media (min-width: 700px) { .qrbox.lan { display: block; } }
@@ -467,6 +571,11 @@ _INDEX_HTML = """<!DOCTYPE html>
   <div class="card collage" id="collageCard" style="display:none">
     <div class="label">5 · 合集晒图卡（发朋友圈用这张）</div>
     <img id="collageImg">
+  </div>
+
+  <div class="card" id="histCard" style="display:none">
+    <div class="label">历史生成（点击查看）</div>
+    <div class="hist" id="hist"></div>
   </div>
 
   <div class="card qrbox" id="qrbox">
@@ -527,7 +636,7 @@ async function poll() {
   render(job);
   const busy = job.status === 'running' || job.images.some(i => i.anim_status === 'running');
   if (!busy) {
-    clearInterval(timer); timer = null;
+    if (timer) { clearInterval(timer); timer = null; loadHistory(); }
     $('go').disabled = false;
     if (job.error) $('err').textContent = job.error;
   }
@@ -608,6 +717,34 @@ async function animate(index, mode) {
   if (!resp.ok) { $('err').textContent = await resp.text(); return; }
   startPoll();
 }
+
+async function loadHistory() {
+  const items = await (await fetch('/api/history')).json();
+  if (!items.length) return;
+  $('histCard').style.display = 'block';
+  const box = $('hist');
+  box.innerHTML = '';
+  items.forEach(it => {
+    const div = document.createElement('div');
+    div.className = 'hitem';
+    const when = it.created_at ? new Date(it.created_at * 1000).toLocaleString('zh-CN', {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+    div.innerHTML = `<img src="${it.thumb || ''}">${it.pack_name}<small>${when} · ${it.done}/${it.total}张</small>`;
+    div.onclick = () => openJob(it.job_id);
+    box.appendChild(div);
+  });
+}
+
+function openJob(id) {
+  jobId = id;
+  $('resultCard').style.display = 'block';
+  $('collageCard').style.display = 'none';
+  $('grid').innerHTML = '';
+  $('err').textContent = '';
+  startPoll();
+  window.scrollTo({ top: $('resultCard').offsetTop - 12, behavior: 'smooth' });
+}
+
+loadHistory();
 </script>
 </body>
 </html>

@@ -220,3 +220,35 @@ def test_animate_mode_frames_uses_image_provider(client):
     job = _wait_anim(client, job_id, 1)
     assert job["images"][1]["anim_status"] == "done"
     assert len(client.fake_provider.prompts) == before + 1  # one keyframe edit call
+
+
+def test_job_meta_persisted_to_disk(client, tmp_path):
+    job_id = _animated_job(client)
+    import json
+
+    meta = json.loads((tmp_path / job_id / "job.json").read_text())
+    assert meta["pack_name"] == "社畜的一天"
+    assert len(meta["images"]) == 8
+    assert "selfie" not in meta  # privacy: never persisted
+
+
+def test_history_endpoint_lists_jobs(client):
+    job_id = _animated_job(client)
+    resp = client.get("/api/history")
+    assert resp.status_code == 200
+    items = resp.json()
+    assert any(i["job_id"] == job_id for i in items)
+    assert items[0]["pack_name"]
+
+
+def test_jobs_survive_restart_but_retry_is_blocked(client, tmp_path, monkeypatch):
+    job_id = _animated_job(client)
+
+    fresh = TestClient(webapp.create_app())  # simulates restart, same OUTPUT_ROOT
+    job = fresh.get(f"/api/jobs/{job_id}")
+    assert job.status_code == 200
+    assert all(i["status"] == "done" for i in job.json()["images"])
+    assert fresh.get(job.json()["images"][0]["url"]).status_code == 200
+
+    resp = fresh.post(f"/api/jobs/{job_id}/retry/1")
+    assert resp.status_code == 409  # selfie gone by privacy design
