@@ -97,6 +97,13 @@
   .pcard:hover { transform: translateY(-2px) rotate(-1deg); border-color: var(--ink); }
   .pcard.sel { border-color: var(--accent); background: #FFF1E8; }
   .pcard img, .pph { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 10px; background: #F3ECD8; }
+  .stylegrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 4px; max-height: 62vh; overflow-y: auto; }
+  @media (max-width: 560px) { .stylegrid { grid-template-columns: repeat(2, 1fr); } }
+  .scard { border: 2px solid var(--line); border-radius: 13px; padding: 6px; cursor: pointer; text-align: center; transition: .12s; background: #FFFDF6; }
+  .scard:hover { transform: translateY(-2px); border-color: var(--ink); }
+  .scard img { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 9px; background: #F3ECD8; }
+  .scard b { display: block; font-size: 12px; margin-top: 4px; }
+  .scard small { display: block; font-size: 10px; color: var(--ink-3); }
   .pph { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: var(--ink-3); }
   .pph svg { width: 26px; height: 26px; stroke: var(--ink-3); stroke-width: 1.6; fill: none; }
   .pph small { font-size: 11px; }
@@ -179,6 +186,7 @@
 
   dialog { margin: auto; } /* 页面 margin reset 会让 dialog 钉死左上角 */
   dialog#styleDlg, dialog#unlockDlg { border: 2px solid var(--ink); border-radius: var(--r); padding: 20px; width: min(92vw, 380px); }
+  dialog#styleDlg { width: min(92vw, 460px); }
   dialog#styleDlg::backdrop, dialog#unlockDlg::backdrop { background: rgba(26,21,5,.4); }
   dialog#styleDlg h3, dialog#unlockDlg h3 { font-size: 15px; margin-bottom: 10px; }
   #unlockDlg .perks { list-style: none; margin: 0 0 12px; padding: 0; font-size: 14px; }
@@ -326,7 +334,7 @@
 
 <dialog id="styleDlg">
   <h3>换个画风，同一套梗再来一遍</h3>
-  <div id="styleList" class="row" style="flex-direction:column;align-items:stretch;gap:8px;margin-top:4px"></div>
+  <div id="styleList" class="stylegrid"></div>
   <div class="row"><button class="btn" id="styleCancel">取消</button></div>
 </dialog>
 <dialog id="unlockDlg">
@@ -694,13 +702,17 @@ $('restyleBtn').onclick = async () => {
   if (!stylesLoaded) {
     const d = await (await fetch('/api/styles')).json();
     const list = $('styleList');
-    const all = [{ id: '', name: '经典贴纸', desc: '默认风格，重抽一套' }, ...d.styles];
+    const all = [
+      { id: '', name: '经典贴纸', desc: '默认风格，重抽一套', preview: '/api/pack-preview/shechu' },
+      ...d.styles.map(s => ({ ...s, preview: `/api/pack-preview/style-${s.id}` })),
+    ];
     all.forEach(s => {
-      const b = document.createElement('button');
-      b.className = 'btn';
-      b.textContent = `${s.name} · ${s.desc}`;
-      b.onclick = () => { $('styleDlg').close(); restyle(s.id); };
-      list.appendChild(b);
+      const card = document.createElement('div');
+      card.className = 'scard';
+      card.setAttribute('role', 'button');
+      card.innerHTML = `<img src="${s.preview}" loading="lazy" alt="${s.name}画风示例"><b>${s.name}</b><small>${s.desc}</small>`;
+      card.onclick = () => { $('styleDlg').close(); restyle(s.id); };
+      list.appendChild(card);
     });
     stylesLoaded = true;
   }
