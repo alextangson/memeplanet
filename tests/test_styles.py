@@ -80,3 +80,8 @@ def test_compile_with_new_style_keeps_invariants():
     assert STYLES["felt"]["block"] in p
     # 画风覆盖尾注仍强制一致性与白底
     assert "主体一致性、纯白背景、白色描边" in p
+
+
+def test_every_style_has_preview_asset():
+    for sid in STYLES:
+        assert (PACKS_DIR / "previews" / f"style-{sid}.png").exists(), sid
