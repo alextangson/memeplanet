@@ -75,3 +75,18 @@ def test_compile_keyframe_is_minimal_edit_instruction():
     instr = compile_keyframe(pack, meme)
     assert "保持" in instr and "不变" in instr   # minimal-change edit contract
     assert meme.action in instr or meme.motion in instr
+
+
+def test_pet_pack_uses_pet_identity_block():
+    from mememe.core.schema import Pack
+
+    base = {
+        "id": "t", "name": "测试", "style": "Q版贴纸风格",
+        "memes": [{"id": "a", "caption": "好", "expression": "笑",
+                   "action": "站", "shot": "半身"}],
+    }
+    person_prompt = compile_pack(Pack.model_validate(base))[0]
+    pet_prompt = compile_pack(Pack.model_validate({**base, "subject": "pet"}))[0]
+    assert "发型" in person_prompt and "毛色" not in person_prompt
+    assert "毛色" in pet_prompt and "发型" not in pet_prompt
+    assert "宠物" in pet_prompt

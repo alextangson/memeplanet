@@ -1,0 +1,114 @@
+# 狗子的一天 — 上传你家狗的照片。快乐浓度超标的 16 个瞬间。
+
+id: gouzi
+name: 狗子的一天
+description: 上传狗子的照片——它的快乐就是这么简单的 16 件事
+version: 1
+language: zh
+subject: pet
+
+style: |
+  Q版贴纸插画风格，粗白色描边，背景必须纯白。
+  宠物特征必须与参考照片一致并贯穿全套：毛色、花纹、品种特征、体型、
+  项圈等配饰，一眼能认出是同一只狗。
+  表情拟人化、夸张欢乐，保留狗的本体形态（不变成人形）。
+  文案以大号中文手写体渲染在画面下方居中，字色深、带白边，清晰可读。
+
+memes:
+  # ---- 免费层 ----
+  - id: wang
+    caption: 汪！
+    expression: 咧嘴吐舌的灿烂笑
+    action: 原地起跳，耳朵飞起
+    shot: 半身
+
+  - id: qiuwan
+    caption: 球球了陪我玩
+    expression: 期待到发光的大眼睛
+    action: 叼着网球递到镜头前
+    shot: 半身
+
+  - id: liuwo
+    caption: 遛我！遛我！
+    expression: 兴奋到原地转圈的急切
+    action: 叼着牵引绳疯狂摇尾巴
+    shot: 全身
+
+  - id: ganfan
+    caption: 干饭第一名
+    expression: 两眼放光盯着饭盆
+    action: 埋头猛炫，饭粒横飞，尾巴成螺旋桨
+    shot: 半身
+
+  - id: wocuole
+    caption: 我错了
+    expression: 耳朵耷拉，眼神愧疚上瞟
+    action: 趴在地上，下巴贴地
+    shot: 头肩特写
+
+  - id: zhuangsi
+    caption: 装死
+    expression: 闭眼吐舌
+    action: 四脚朝天躺平一动不动
+    shot: 全身俯视
+
+  - id: jingxi
+    caption: ！！！
+    expression: 目瞪口呆，瞳孔放大
+    action: 看见零食袋的瞬间定格
+    shot: 头肩特写
+
+  - id: huijia-le
+    caption: 你可算回来了
+    expression: 委屈和狂喜同时拉满
+    action: 飞扑向镜头，耳朵向后飞
+    shot: 全身
+
+  # ---- 付费层 ----
+  - id: shouwo
+    caption: 握手手
+    expression: 乖巧认真的期待
+    action: 端坐伸出一只爪子
+    shot: 半身
+
+  - id: haogougou
+    caption: 谁是好狗狗
+    expression: 得意骄傲，下巴抬高
+    action: 挺胸端坐，胸前戴小红花
+    shot: 半身
+
+  - id: bu-xizao
+    caption: 不要洗澡！
+    expression: 惊恐瞪眼
+    action: 四爪扒住门框，身体被往后拖
+    shot: 全身
+
+  - id: zhuanquan
+    caption: 开心到转圈
+    expression: 咧嘴大笑
+    action: 追着自己尾巴原地转圈，带残影
+    shot: 全身
+
+  - id: fandupi
+    caption: 求摸肚肚
+    expression: 撒娇讨好的笑
+    action: 翻出肚皮四脚乱蹬
+    shot: 全身俯视
+
+  - id: kanjia
+    caption: 看家ing
+    expression: 严肃认真，眉头紧锁
+    action: 趴在窗台目视远方站岗
+    shot: 半身
+
+  - id: chai-kuaidi
+    caption: 帮你拆快递
+    expression: 得意邀功
+    action: 叼着撕碎的快递盒残骸
+    shot: 半身
+
+  - id: zui-aini
+    caption: 最爱你了
+    expression: 幸福眯眼
+    action: 扑到镜头前舔屏，头顶冒爱心
+    shot: 头部特写

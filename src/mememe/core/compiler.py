@@ -6,13 +6,20 @@ same identity instruction, paired with the same reference photo at call time.
 
 from mememe.core.schema import Meme, Pack
 
+_IDENTITY_BLOCKS = {
+    "person": """人物必须与参考照片中是同一个人：保持发型、脸型、肤色、眼镜/配饰、
+服装等标志性特征，整套表情包中角色形象完全一致。""",
+    "pet": """宠物必须与参考照片中是同一只：保持毛色、花纹、品种特征、体型、
+项圈等配饰，整套表情包中形象完全一致。""",
+}
+_SUBJECT_WORD = {"person": "人物", "pet": "宠物"}
+
 _PROMPT_TEMPLATE = """\
-基于参考照片中的人物，生成一张微信表情包贴纸。
+基于参考照片中的{subject_word}，生成一张微信表情包贴纸。
 
-【人物一致性】人物必须与参考照片中是同一个人：保持发型、脸型、肤色、眼镜/配饰、
-服装等标志性特征，整套表情包中角色形象完全一致。
+【主体一致性】{identity}
 
-【画幅】正方形 1:1。只保留人物角色与文案，绝对不要保留或重绘参考照片的背景，
+【画幅】正方形 1:1。只保留{subject_word}角色与文案，绝对不要保留或重绘参考照片的背景，
 背景必须是纯白色。
 
 【全局风格】
@@ -28,6 +35,8 @@ _PROMPT_TEMPLATE = """\
 
 def compile_meme(pack: Pack, meme: Meme, caption_override: str | None = None) -> str:
     return _PROMPT_TEMPLATE.format(
+        subject_word=_SUBJECT_WORD[pack.subject],
+        identity=_IDENTITY_BLOCKS[pack.subject],
         style=pack.style.strip(),
         expression=meme.expression,
         action=meme.action,

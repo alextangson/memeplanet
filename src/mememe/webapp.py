@@ -33,7 +33,7 @@ from mememe.providers.base import ImageProvider
 
 OUTPUT_ROOT = Path("out/web")
 PACKS_DIR = Path(os.environ.get("MEMEME_PACKS_DIR", "packs"))
-DEFAULT_QR_URL = "https://github.com/REPLACE-ME/mememe"
+DEFAULT_QR_URL = "https://github.com/alextangson/meme-me"
 
 
 def _make_provider(name: str = "") -> ImageProvider:
@@ -302,7 +302,7 @@ def create_app() -> FastAPI:
                 }
             )
         # 旗舰在前，新投稿的包按字母序排在后面
-        order = {"shechu": 0, "yinyang": 1, "lianai": 2, "ganfan": 3, "qimo": 4, "hajimi": 5}
+        order = {"shechu": 0, "maomi": 1, "gouzi": 2, "yinyang": 3, "lianai": 4, "ganfan": 5, "qimo": 6, "hajimi": 7}
         packs.sort(key=lambda p: (order.get(p["id"], 99), p["id"]))
         return packs
 
@@ -588,8 +588,8 @@ _INDEX_HTML = """<!DOCTYPE html>
   </div>
 
   <div class="card">
-    <div class="label">1 · 上传一张正脸自拍</div>
-    <div class="drop" id="drop" onclick="document.getElementById('file').click()">📷 点击选择照片</div>
+    <div class="label">1 · 上传一张正脸自拍 / 主子的萌照</div>
+    <div class="drop" id="drop" onclick="document.getElementById('file').click()">📷 点击选择照片（人或宠物都行）</div>
     <input type="file" id="file" accept="image/*" hidden>
     <div class="privacy">照片只存在内存里，服务停止即消失</div>
   </div>

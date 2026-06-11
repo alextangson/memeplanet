@@ -1,0 +1,114 @@
+# 猫主子的一天 — 上传你家猫的照片。文案是猫的内心独白，人类替猫发言。
+
+id: maomi
+name: 猫主子的一天
+description: 上传主子的照片，让它替你说话——朕的 16 个高贵瞬间
+version: 1
+language: zh
+subject: pet
+
+style: |
+  Q版贴纸插画风格，粗白色描边，背景必须纯白。
+  宠物特征必须与参考照片一致并贯穿全套：毛色、花纹、品种特征、体型、
+  项圈等配饰，一眼能认出是同一只猫。
+  表情拟人化、夸张可爱，保留猫的本体形态（不变成人形）。
+  文案以大号中文手写体渲染在画面下方居中，字色深、带白边，清晰可读。
+
+memes:
+  # ---- 免费层 ----
+  - id: miao
+    caption: 喵？
+    expression: 歪头疑惑，满头问号
+    action: 端坐歪头 45 度，一只耳朵转向旁边
+    shot: 头肩特写
+
+  - id: zhen-ele
+    caption: 朕饿了
+    expression: 不耐烦的俯视，眼神带审判
+    action: 一爪搭在空食盆边缘敲击
+    shot: 全身
+
+  - id: chaijia
+    caption: 拆家ing
+    expression: 无辜中透着得意
+    action: 一爪把桌沿的杯子缓缓推下去，眼睛直视镜头
+    shot: 半身
+
+  - id: xianqi
+    caption: 嫌弃
+    expression: 眯眼撇头，嫌弃到极致
+    action: 一爪向前推开，头扭向一边
+    shot: 头肩特写
+
+  - id: zhuangshui
+    caption: 装睡中
+    expression: 眯成一条缝的眼睛偷偷睁开一只
+    action: 团成一个毛球假睡
+    shot: 全身
+
+  - id: cainai
+    caption: 幸福踩奶
+    expression: 陶醉眯眼，嘴角上扬
+    action: 前爪交替踩着小毯子
+    shot: 半身
+
+  - id: paoku
+    caption: 凌晨跑酷
+    expression: 瞳孔放到最大，兴奋失控
+    action: 四脚腾空飞奔，身后一串残影
+    shot: 全身侧视
+
+  - id: wuyu
+    caption: 无语
+    expression: 死鱼眼直视镜头，面无表情
+    action: 呆坐不动，尾巴尖轻拍地面
+    shot: 头肩特写
+
+  # ---- 付费层 ----
+  - id: chanshi-de-ne
+    caption: 铲屎的呢？
+    expression: 四处张望的茫然
+    action: 蹲坐在门口抬头等待
+    shot: 全身
+
+  - id: gei-zhen-rou
+    caption: 给朕揉揉
+    expression: 命令式的期待
+    action: 四脚朝天翻出肚皮
+    shot: 全身俯视
+
+  - id: xiasi-le
+    caption: 吓死喵了
+    expression: 炸毛瞪眼，胡须根根竖起
+    action: 背拱成桥形原地弹起
+    shot: 全身
+
+  - id: qiu-touwei
+    caption: 求投喂
+    expression: 水汪汪的大眼睛，可怜巴巴
+    action: 双爪合十作揖
+    shot: 半身
+
+  - id: buxiang-shangban
+    caption: 不想上班
+    expression: 生无可恋
+    action: 整只猫瘫在键盘上压住按键
+    shot: 全身
+
+  - id: shui-le
+    caption: 睡了勿扰
+    expression: 闭眼安详
+    action: 卷成完美的猫卷，尾巴盖住鼻子
+    shot: 全身俯视
+
+  - id: kaixin
+    caption: 开心到飞起
+    expression: 眯眼咧嘴的灿烂笑
+    action: 双爪举高高原地跳起
+    shot: 全身
+
+  - id: aini
+    caption: 爱你喵
+    expression: 温柔眯眼
+    action: 歪头往镜头前蹭，头顶冒小爱心
+    shot: 头部特写

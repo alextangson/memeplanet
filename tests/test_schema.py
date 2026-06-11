@@ -78,3 +78,17 @@ def test_meme_motion_field_optional_with_default():
     data["memes"][0]["motion"] = "敬礼的手上下挥动"
     pack = Pack.model_validate(data)
     assert pack.memes[0].motion == "敬礼的手上下挥动"
+
+
+def test_subject_defaults_to_person_and_accepts_pet():
+    data = _minimal_pack_dict()
+    assert Pack.model_validate(data).subject == "person"
+    data["subject"] = "pet"
+    assert Pack.model_validate(data).subject == "pet"
+
+
+def test_invalid_subject_rejected():
+    data = _minimal_pack_dict()
+    data["subject"] = "robot"
+    with pytest.raises(ValidationError):
+        Pack.model_validate(data)

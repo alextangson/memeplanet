@@ -1,6 +1,7 @@
 """Pack schema — the YAML meme-script format is this project's public API."""
 
 from pathlib import Path
+from typing import Literal
 
 import yaml
 from pydantic import BaseModel, Field, field_validator
@@ -23,6 +24,7 @@ class Pack(BaseModel):
     description: str = ""
     version: int = 1
     language: str = "zh"
+    subject: Literal["person", "pet"] = "person"
     style: str = Field(min_length=1)
     memes: list[Meme] = Field(min_length=1)
 
