@@ -1,0 +1,115 @@
+# 运动达人 — 健身撸铁圈梗剧本（圈层化内容策略第一弹）
+# 顺序即叙事：从开练到永远的最后一组。前 8 个是免费层（最高 sendability 优先）。
+
+id: yundong
+name: 运动达人
+description: 健身撸铁人的 16 个高频瞬间，从开练到永远的最后一组
+version: 1
+language: zh
+
+# 全局风格块：每张 prompt 都注入，保证 16 张是同一个角色、同一种画风
+style: |
+  Q版三头身（chibi）贴纸插画风格，粗白色描边，背景必须纯白。
+  人物特征必须与参考照片一致并贯穿全套：发型、脸型、肤色、眼镜/配饰等标志性特征。
+  人物穿运动背心或速干T恤，健身道具夸张化（巨大哑铃杠铃、发光蛋白杯），汗滴特效点缀。
+  表情夸张、动作戏剧化，微信表情包审美。
+  文案以大号中文手写体渲染在画面下方居中，字色深、带白边，清晰可读。
+
+memes:
+  # ---- 免费层（前 8 个，sendability 最高）----
+  - id: kailian
+    caption: 开练！
+    expression: 斗志昂扬，眼神发光
+    action: 戴着耳机扛起杠铃，气势全开
+    shot: 全身
+
+  - id: liantui-wucue
+    caption: 练腿日，勿cue
+    expression: 灵魂出窍的痛苦面具
+    action: 深蹲架下蹲起，双腿抖成波浪线
+    shot: 全身
+
+  - id: lijie
+    caption: 力竭了
+    expression: 眼神涣散，嘴角抽搐
+    action: 双手抖成残影，手机都拿不稳掉落
+    shot: 半身
+
+  - id: bailianle
+    caption: 白练了
+    expression: 崩溃含泪，边哭边吃
+    action: 一手炸鸡一手奶茶，泪流满面往嘴里塞
+    shot: 半身
+
+  - id: zengji
+    caption: 我在增肌
+    expression: 理直气壮，眼神坚定
+    action: 面对堆成山的米饭炸鸡大口炫饭
+    shot: 半身
+
+  - id: mingtian-yiding
+    caption: 明天一定练
+    expression: 心虚又躺得舒适
+    action: 瘫在沙发上刷手机，旁边「今日开练」小旗折断倒地
+    shot: 全身
+
+  - id: youyang-bushu
+    caption: 有氧？不熟
+    expression: 嫌弃撇嘴，摆手拒绝
+    action: 坐在地上啃蛋白棒朝后摆手，身后跑步机在追
+    shot: 全身
+
+  - id: tong-taitong
+    caption: 痛，太痛了
+    expression: 龇牙咧嘴的痛苦面具
+    action: 螃蟹步横着挪下楼梯，一手扶墙
+    shot: 全身
+
+  # ---- 付费层（后 8 个）----
+  - id: sandaxiang
+    caption: 三大项：吃、睡、鸽
+    expression: 一本正经的自豪
+    action: 挺胸站立，胸前挂三块金牌分别刻着吃、睡、鸽
+    shot: 半身
+
+  - id: hexin-yisui
+    caption: 核心已碎
+    expression: 生无可恋，眼神放空
+    action: 平板支撑塌成一滩液体，半透明灵魂从背后飘出
+    shot: 全身侧视
+
+  - id: bengan-laman
+    caption: 泵感拉满
+    expression: 自信爆棚，挑眉嘚瑟
+    action: 对着镜子举手机自拍，手臂肌肉夸张发光
+    shot: 半身
+
+  - id: jianzhi-biechanwo
+    caption: 减脂中，别馋我
+    expression: 含泪硬撑的坚强
+    action: 捧着一大盆沙拉小口吃，身后蛋糕散发圣光
+    shot: 半身
+
+  - id: qixie-youren
+    caption: 器械有人？
+    expression: 不耐烦，眯眼怒视
+    action: 抱臂站立探头张望，脚边地上画满一圈圈等待记号
+    shot: 全身
+
+  - id: bubanka
+    caption: 不办卡，谢谢
+    expression: 惊恐中保持礼貌假笑
+    action: 百米冲刺逃跑，身后教练挥舞传单追赶
+    shot: 全身
+
+  - id: zuihou-yizu
+    caption: 最后一组
+    expression: 咬牙切齿，青筋暴起
+    action: 举着杠铃硬撑，旁边计数牌写着「第8个最后一组」
+    shot: 半身
+
+  - id: shouxialai-shuai
+    caption: 瘦下来还是帅的
+    expression: 自我陶醉的微笑
+    action: 照镜子，镜子里是肌肉发达的巨佬版自己
+    shot: 全身
