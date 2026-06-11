@@ -375,13 +375,14 @@ def create_app() -> FastAPI:
     app = FastAPI(title="mememe")
     jobs: dict[str, Job] = _load_jobs()
 
+    # no-cache：否则浏览器启发式缓存让改版后的页面迟迟到不了用户手里
     @app.get("/", response_class=HTMLResponse)
-    def index() -> str:
-        return _INDEX_HTML
+    def index() -> HTMLResponse:
+        return HTMLResponse(_INDEX_HTML, headers={"Cache-Control": "no-cache"})
 
     @app.get("/custom", response_class=HTMLResponse)
-    def custom_page() -> str:
-        return _CUSTOM_HTML
+    def custom_page() -> HTMLResponse:
+        return HTMLResponse(_CUSTOM_HTML, headers={"Cache-Control": "no-cache"})
 
     @app.post("/api/leads")
     def leads(contact: str = Form(...), need: str = Form("")) -> dict:
@@ -718,13 +719,19 @@ def create_app() -> FastAPI:
         if job is None:
             raise HTTPException(404, "job not found")
         stickers = []
+        anim_gifs: list[bytes | None] = []
         for i in range(1, len(job.images) + 1):
-            path = job.out_dir / f"{_sticker_stem(job, i)}.png"
+            stem = _sticker_stem(job, i)
+            path = job.out_dir / f"{stem}.png"
             if path.exists():
                 stickers.append(path.read_bytes())
+                anim = job.out_dir / f"{stem}.anim.gif"
+                anim_gifs.append(anim.read_bytes() if anim.exists() else None)
         if not stickers:
             raise HTTPException(409, "这套还没有生成完成的表情")
-        blob = build_platform_zip(stickers, pack_name=job.pack_name or "表情包")
+        blob = build_platform_zip(
+            stickers, pack_name=job.pack_name or "表情包", anim_gifs=anim_gifs
+        )
         return Response(
             content=blob,
             media_type="application/zip",

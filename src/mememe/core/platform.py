@@ -20,7 +20,7 @@ _GUIDE = """微信表情开放平台上架清单（sticker.weixin.qq.com）
 
 本包内容
 - 主图/01.png ~ {n:02d}.png   表情主图（240×240，平台要求 16 或 24 个一套）
-- 封面_240.png               表情封面（240×240）
+{anim_line}- 封面_240.png               表情封面（240×240）
 - 图标_50.png                聊天面板图标（50×50）
 - 横幅_750x400.png           详情页横幅（750×400）
 
@@ -60,7 +60,12 @@ def _banner(stickers: list[bytes], pack_name: str) -> bytes:
     return buf.getvalue()
 
 
-def build_platform_zip(stickers: list[bytes], *, pack_name: str) -> bytes:
+def build_platform_zip(
+    stickers: list[bytes],
+    *,
+    pack_name: str,
+    anim_gifs: list[bytes | None] | None = None,
+) -> bytes:
     if not stickers:
         raise ValueError("没有可打包的表情")
     first = Image.open(io.BytesIO(stickers[0])).convert("RGBA")
@@ -76,8 +81,19 @@ def build_platform_zip(stickers: list[bytes], *, pack_name: str) -> bytes:
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for i, blob in enumerate(stickers, 1):
             zf.writestr(f"主图/{i:02d}.png", blob)
+        gif_count = 0
+        for i, gif in enumerate(anim_gifs or [], 1):
+            if gif:
+                zf.writestr(f"动图/{i:02d}.gif", gif)
+                gif_count += 1
+        anim_line = (
+            f"- 动图/NN.gif                已转动图的表情（{gif_count} 张；"
+            "上架动态表情需整套都是动图）\n"
+            if gif_count
+            else ""
+        )
         zf.writestr("封面_240.png", cover.getvalue())
         zf.writestr("图标_50.png", icon.getvalue())
         zf.writestr("横幅_750x400.png", _banner(stickers, pack_name))
-        zf.writestr("上架说明.txt", _GUIDE.format(n=n, hint=hint))
+        zf.writestr("上架说明.txt", _GUIDE.format(n=n, hint=hint, anim_line=anim_line))
     return buf.getvalue()

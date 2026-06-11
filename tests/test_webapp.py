@@ -241,6 +241,27 @@ def test_history_endpoint_lists_jobs(client):
     assert items[0]["pack_name"]
 
 
+def test_html_pages_send_no_cache_header(client):
+    # 没有这个头浏览器会启发式缓存，用户改版后看到的还是旧页面
+    assert client.get("/").headers["cache-control"] == "no-cache"
+    assert client.get("/custom").headers["cache-control"] == "no-cache"
+
+
+def test_platform_pack_includes_anim_gifs(client):
+    import zipfile as _zipfile
+
+    job_id = _animated_job(client)
+    client.post(f"/api/jobs/{job_id}/animate/1", data={"mode": "shake"})
+    _wait_anim(client, job_id, 0)
+
+    resp = client.get(f"/api/jobs/{job_id}/platform-pack")
+    assert resp.status_code == 200
+    names = set(_zipfile.ZipFile(io.BytesIO(resp.content)).namelist())
+    assert "主图/01.png" in names
+    assert "动图/01.gif" in names  # 转过动图的表情要进素材包
+    assert "动图/02.gif" not in names
+
+
 def test_events_endpoint_appends_jsonl(client, tmp_path, monkeypatch):
     import json as _json
 
