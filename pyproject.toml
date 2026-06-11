@@ -16,6 +16,7 @@ dependencies = [
 
 [project.optional-dependencies]
 rembg = ["rembg>=2.0", "onnxruntime>=1.18"]
+web = ["fastapi>=0.111", "uvicorn>=0.30", "python-multipart>=0.0.9"]
 
 [project.scripts]
 biaoqingbao = "biaoqingbao.cli:app"

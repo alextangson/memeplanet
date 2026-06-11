@@ -122,5 +122,22 @@ def retry(
     _rebuild_collage(out, pack, qr_url)
 
 
+@app.command()
+def web(
+    port: int = typer.Option(8000, "--port", help="监听端口"),
+    host: str = typer.Option("127.0.0.1", "--host", help="监听地址（默认仅本机）"),
+) -> None:
+    """启动本地网页界面（需要 web 依赖：uv sync --extra web）。"""
+    try:
+        import uvicorn
+
+        from biaoqingbao.webapp import create_app
+    except ImportError:
+        typer.echo("web 依赖未安装：uv sync --extra web")
+        raise typer.Exit(1)
+    typer.echo(f"表情包工厂 → http://{host}:{port}")
+    uvicorn.run(create_app(), host=host, port=port, log_level="warning")
+
+
 if __name__ == "__main__":
     app()

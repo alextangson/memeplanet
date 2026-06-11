@@ -90,3 +90,9 @@ def test_retry_rewrites_single_sticker(tmp_path, monkeypatch):
     assert target.read_bytes() != b"corrupted"
     img = Image.open(target)
     assert img.size == (240, 240)
+
+
+def test_web_command_exists():
+    result = runner.invoke(cli.app, ["web", "--help"])
+    assert result.exit_code == 0
+    assert "端口" in result.output or "port" in result.output.lower()
