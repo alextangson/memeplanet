@@ -59,3 +59,12 @@ def test_draft_retries_once_on_invalid_then_raises():
     with pytest.raises(ValueError, match="剧本生成失败"):
         sw.draft([{"role": "user", "content": "随便"}])
     assert len(chat.calls) == 2
+
+
+def test_draft_preserves_subject_desc():
+    draft = _valid_draft()
+    draft["subject_desc"] = "一只穿围裙的树懒玩偶"
+    chat = FakeChat([json.dumps(draft, ensure_ascii=False)])
+    pack = Scriptwriter(chat).draft([{"role": "user", "content": "树懒"}])
+    assert pack.subject_desc == "一只穿围裙的树懒玩偶"
+    assert "subject_desc" in DRAFT_INSTRUCTION

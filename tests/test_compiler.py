@@ -90,3 +90,13 @@ def test_pet_pack_uses_pet_identity_block():
     assert "发型" in person_prompt and "毛色" not in person_prompt
     assert "毛色" in pet_prompt and "发型" not in pet_prompt
     assert "宠物" in pet_prompt
+
+
+def test_motion_override_replaces_default():
+    from mememe.core.compiler import compile_keyframe, compile_motion
+
+    pack = load_pack(PACKS_DIR / "shechu.yaml")
+    meme = pack.memes[0]
+    assert "疯狂挥手再见" in compile_motion(pack, meme, motion_override="疯狂挥手再见")
+    assert meme.action not in compile_motion(pack, meme, motion_override="疯狂挥手再见")
+    assert "疯狂挥手再见" in compile_keyframe(pack, meme, motion_override="疯狂挥手再见")

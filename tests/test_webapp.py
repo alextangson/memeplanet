@@ -367,3 +367,53 @@ def test_generate_works_with_custom_pack(agent_client):
     assert resp.status_code == 200
     job = _wait_done(agent_client, resp.json()["job_id"])
     assert job["status"] == "done"
+
+
+def test_animate_with_custom_motion(client, monkeypatch):
+    prompts = []
+
+    class FakeVideo:
+        def animate(self, prompt: str, image: bytes, **kw) -> bytes:
+            prompts.append(prompt)
+            return b"MP4"
+
+    monkeypatch.setattr(webapp, "_make_video_provider", lambda: FakeVideo())
+    monkeypatch.setattr(webapp, "mp4_to_wechat_gif", lambda mp4, **kw: _tiny_gif())
+
+    job_id = _animated_job(client)
+    resp = client.post(
+        f"/api/jobs/{job_id}/animate/1",
+        data={"mode": "video", "motion": "举着咖啡杯慢动作干杯"},
+    )
+    assert resp.status_code == 200
+    _wait_anim(client, job_id, 0)
+    assert "举着咖啡杯慢动作干杯" in prompts[0]
+
+
+def test_custom_pack_preview_generated_and_served(agent_client, tmp_path, monkeypatch):
+    import io as _io
+
+    from PIL import Image as _Image
+
+    def fake_t2i(prompt: str) -> bytes:
+        buf = _io.BytesIO()
+        _Image.new("RGBA", (300, 300), (10, 180, 90, 255)).save(buf, format="PNG")
+        return buf.getvalue()
+
+    monkeypatch.setattr(webapp, "_make_t2i", lambda: fake_t2i)
+    draft_id = agent_client.post(
+        "/api/agent/chat", data={"message": "树懒"}
+    ).json()["draft_id"]
+    resp = agent_client.post("/api/agent/draft", data={"draft_id": draft_id})
+    pack_id = resp.json()["pack_id"]
+
+    import time as _t
+
+    deadline = _t.time() + 5
+    preview = webapp.CUSTOM_PACKS_DIR / "previews" / f"{pack_id}.png"
+    while _t.time() < deadline and not preview.exists():
+        _t.sleep(0.05)
+    assert preview.exists()
+    packs = agent_client.get("/api/packs").json()
+    assert packs[0]["preview_url"] == f"/api/pack-preview/{pack_id}"
+    assert agent_client.get(packs[0]["preview_url"]).status_code == 200

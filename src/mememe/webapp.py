@@ -46,6 +46,29 @@ def _make_scriptwriter():
     return Scriptwriter(DeepSeekChat())
 
 
+def _make_t2i():
+    from mememe.providers.seedream import SeedreamProvider
+
+    return SeedreamProvider().generate_text
+
+
+def _generate_custom_preview(pack, path: Path) -> None:
+    """定制包没有用户照片，用主角描述文生图出一张风格预览。失败静默（占位符兜底）。"""
+    try:
+        meme = pack.memes[0]
+        prompt = (
+            f"生成一张微信表情包贴纸。主角：{pack.subject_desc or pack.description}。\n"
+            f"【画幅】正方形 1:1，背景必须纯白。\n【风格】\n{pack.style.strip()}\n"
+            f"【内容】表情：{meme.expression}；动作：{meme.action}；"
+            f"画面文案（渲染在图内下方）：「{meme.caption}」"
+        )
+        raw = _make_t2i()(prompt)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(to_sticker_png(raw))
+    except Exception:
+        pass
+
+
 def _find_pack_path(pack_id: str) -> Path | None:
     if "/" in pack_id or ".." in pack_id:
         return None
@@ -212,7 +235,9 @@ def _run_generation(job: Job, provider: ImageProvider) -> None:
     _save_meta(job)
 
 
-def _make_anim_gif(job: Job, index: int, mode: str, provider) -> bytes:
+def _make_anim_gif(
+    job: Job, index: int, mode: str, provider, motion: str | None = None
+) -> bytes:
     pos = index - 1
     stem = _sticker_stem(job, index)
     if mode in ("shake", "bounce"):
@@ -220,7 +245,7 @@ def _make_anim_gif(job: Job, index: int, mode: str, provider) -> bytes:
         return procedural_gif(png, effect=mode)
     if mode == "frames":
         raw = (job.out_dir / f"raw-{stem}.png").read_bytes()
-        prompt = compile_keyframe(job.pack, job.pack.memes[pos])
+        prompt = compile_keyframe(job.pack, job.pack.memes[pos], motion_override=motion)
         try:
             alt = provider.generate(prompt, raw)
         except Exception:
@@ -240,16 +265,20 @@ def _make_anim_gif(job: Job, index: int, mode: str, provider) -> bytes:
         ]
         return frames_to_gif(frames, fps=5)
     raw = (job.out_dir / f"raw-{stem}.png").read_bytes()
-    mp4 = provider.animate(compile_motion(job.pack, job.pack.memes[pos]), raw)
+    mp4 = provider.animate(
+        compile_motion(job.pack, job.pack.memes[pos], motion_override=motion), raw
+    )
     return mp4_to_wechat_gif(
         mp4, caption_source=(job.out_dir / f"{stem}.png").read_bytes()
     )
 
 
-def _run_animate(job: Job, provider, index: int, mode: str) -> None:
+def _run_animate(
+    job: Job, provider, index: int, mode: str, motion: str | None = None
+) -> None:
     pos = index - 1
     try:
-        gif = _make_anim_gif(job, index, mode, provider)
+        gif = _make_anim_gif(job, index, mode, provider, motion)
         stem = _sticker_stem(job, index)
         (job.out_dir / f"{stem}.anim.gif").write_bytes(gif)
         with job.lock:
@@ -314,7 +343,10 @@ def create_app() -> FastAPI:
         for base, is_custom in sources:
             for path in sorted(base.glob("*.yaml")):
                 pack = load_pack(path)
-                has_preview = (PACKS_DIR / "previews" / f"{pack.id}.png").exists()
+                has_preview = any(
+                    (b / "previews" / f"{pack.id}.png").exists()
+                    for b in (PACKS_DIR, CUSTOM_PACKS_DIR)
+                )
                 packs.append(
                     {
                         "id": pack.id,
@@ -371,6 +403,11 @@ def create_app() -> FastAPI:
             yaml.safe_dump(data, allow_unicode=True, sort_keys=False),
             encoding="utf-8",
         )
+        threading.Thread(
+            target=_generate_custom_preview,
+            args=(pack, CUSTOM_PACKS_DIR / "previews" / f"{pack_id}.png"),
+            daemon=True,
+        ).start()
         return {
             "pack_id": pack_id,
             "name": pack.name,
@@ -382,10 +419,11 @@ def create_app() -> FastAPI:
     def pack_preview(pack_id: str) -> FileResponse:
         if "/" in pack_id or ".." in pack_id:
             raise HTTPException(404, "not found")
-        path = PACKS_DIR / "previews" / f"{pack_id}.png"
-        if not path.exists():
-            raise HTTPException(404, "not found")
-        return FileResponse(path, media_type="image/png")
+        for base in (PACKS_DIR, CUSTOM_PACKS_DIR):
+            path = base / "previews" / f"{pack_id}.png"
+            if path.exists():
+                return FileResponse(path, media_type="image/png")
+        raise HTTPException(404, "not found")
 
     @app.post("/api/generate")
     def generate(
@@ -483,7 +521,12 @@ def create_app() -> FastAPI:
         return {"job_id": job_id}
 
     @app.post("/api/jobs/{job_id}/animate/{index}")
-    def animate(job_id: str, index: int, mode: str = Form("video")) -> dict:
+    def animate(
+        job_id: str,
+        index: int,
+        mode: str = Form("video"),
+        motion: str = Form(""),
+    ) -> dict:
         job = jobs.get(job_id)
         if job is None:
             raise HTTPException(404, "job not found")
@@ -513,7 +556,9 @@ def create_app() -> FastAPI:
         else:
             provider = None
         threading.Thread(
-            target=_run_animate, args=(job, provider, index, mode), daemon=True
+            target=_run_animate,
+            args=(job, provider, index, mode, motion.strip() or None),
+            daemon=True,
         ).start()
         return {"job_id": job_id}
 
@@ -611,6 +656,10 @@ _INDEX_HTML = """<!DOCTYPE html>
   .pcard.sel { border-color: #c9551e; background: #fff3ea; }
   .pcard img { width: 100%; aspect-ratio: 1; object-fit: contain;
                border-radius: 10px; background: #f6f2ec; }
+  .pph { width: 100%; aspect-ratio: 1; border-radius: 10px; background: #f6f2ec;
+         display: flex; flex-direction: column; align-items: center; justify-content: center;
+         font-size: 40px; gap: 6px; }
+  .pph small { font-size: 11px; color: #b3a392; }
   .pname { font-size: 14px; font-weight: 700; margin-top: 8px;
            display: flex; justify-content: space-between; align-items: baseline; }
   .pcount { font-size: 10px; color: #b3a392; font-weight: 400; white-space: nowrap; }
@@ -765,7 +814,7 @@ function renderPacks(filter) {
     div.className = 'pcard' + (p.id === packId ? ' sel' : '');
     const chips = p.captions.slice(0, 3).map(c => `<span>${c}</span>`).join('')
       + `<span>+${p.meme_count - 3}</span>`;
-    div.innerHTML = `${p.preview_url ? `<img src="${p.preview_url}" loading="lazy">` : ''}
+    div.innerHTML = `${p.preview_url ? `<img src="${p.preview_url}" loading="lazy">` : '<div class="pph">🎭<small>预览生成中…</small></div>'}
       <div class="pname">${p.name}${p.custom ? '<span class="cbadge">定制</span>' : ''}<span class="pcount">${p.meme_count}梗</span></div>
       <div class="pdesc">${p.description || ''}</div>
       <div class="chips">${chips}</div>`;
@@ -836,6 +885,7 @@ async function agentMakeDraft() {
     busy.textContent = `「${data.name}」写好了！前 8 个梗：${data.captions.join('、')}。已加入上面的剧本列表（带「定制」角标），不满意继续跟我聊，再点生成会出新版本。`;
     await refreshPacks(data.pack_id);
     window.scrollTo({ top: $('packs').offsetTop - 80, behavior: 'smooth' });
+    setTimeout(() => refreshPacks(packId), 25000);  // 等风格预览图生成完
   } catch (e) {
     busy.className = 'bub ai';
     busy.textContent = '生成失败：' + e.message;
@@ -953,15 +1003,25 @@ function animMenu(index) {
     <button data-m="frames">🎞 拼帧 · 几分钱 ~30s</button>
     <button data-m="video">🎬 视频 · 最贵 ~2分钟</button>`;
   menu.querySelectorAll('button').forEach(b => {
-    b.onclick = (e) => { e.stopPropagation(); menu.remove(); animate(index, b.dataset.m); };
+    b.onclick = (e) => {
+      e.stopPropagation(); menu.remove();
+      let motion = '';
+      if (b.dataset.m === 'frames' || b.dataset.m === 'video') {
+        const t = prompt('想要什么动作？一句话描述，留空用默认。比如：举着咖啡杯慢动作干杯 / 揉眼睛打哈欠', '');
+        if (t === null) return;
+        motion = t.trim();
+      }
+      animate(index, b.dataset.m, motion);
+    };
   });
   cell.appendChild(menu);
   setTimeout(() => document.addEventListener('click', () => menu.remove(), { once: true }), 0);
 }
 
-async function animate(index, mode) {
+async function animate(index, mode, motion) {
   const fd = new FormData();
   fd.append('mode', mode);
+  if (motion) fd.append('motion', motion);
   const resp = await fetch(`/api/jobs/${jobId}/animate/${index}`, { method: 'POST', body: fd });
   if (!resp.ok) { $('err').textContent = await resp.text(); return; }
   startPoll();

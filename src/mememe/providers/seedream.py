@@ -22,19 +22,21 @@ def _default_size(model: str) -> str:
 
 
 def build_payload(
-    prompt: str, reference: bytes, *, model: str, size: str | None = None
+    prompt: str, reference: bytes | None, *, model: str, size: str | None = None
 ) -> dict:
-    b64 = base64.b64encode(reference).decode()
-    return {
+    payload = {
         "model": model,
         "prompt": prompt,
-        "image": f"data:image/jpeg;base64,{b64}",
         "size": size or _default_size(model),
         "response_format": "b64_json",
         "sequential_image_generation": "disabled",
         "stream": False,
         "watermark": False,
     }
+    if reference is not None:
+        b64 = base64.b64encode(reference).decode()
+        payload["image"] = f"data:image/jpeg;base64,{b64}"
+    return payload
 
 
 def extract_seedream_image(data: dict) -> bytes:
@@ -55,7 +57,11 @@ class SeedreamProvider:
         self._size = os.environ.get("MEMEME_SEEDREAM_SIZE") or None
         self._base_url = os.environ.get("ARK_BASE_URL", DEFAULT_BASE_URL)
 
-    def generate(self, prompt: str, reference: bytes) -> bytes:
+    def generate_text(self, prompt: str) -> bytes:
+        """文生图（无参考图）——定制包风格预览用。"""
+        return self.generate(prompt, None)
+
+    def generate(self, prompt: str, reference: bytes | None) -> bytes:
         resp = httpx.post(
             f"{self._base_url}/api/v3/images/generations",
             headers={"Authorization": f"Bearer {self._api_key}"},

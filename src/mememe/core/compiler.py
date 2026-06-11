@@ -62,11 +62,19 @@ _KEYFRAME_TEMPLATE = """\
 变化幅度必须小，确保两帧连续播放时形成自然的循环动画。"""
 
 
-def compile_keyframe(pack: Pack, meme: Meme) -> str:
-    motion = meme.motion or meme.action
+def compile_keyframe(
+    pack: Pack, meme: Meme, motion_override: str | None = None
+) -> str:
+    motion = motion_override or meme.motion or meme.action
     return _KEYFRAME_TEMPLATE.format(motion=motion)
 
 
-def compile_motion(pack: Pack, meme: Meme) -> str:
-    motion = meme.motion or f"{meme.expression}，重复做出「{meme.action}」的动作"
+def compile_motion(
+    pack: Pack, meme: Meme, motion_override: str | None = None
+) -> str:
+    motion = (
+        motion_override
+        or meme.motion
+        or f"{meme.expression}，重复做出「{meme.action}」的动作"
+    )
     return _MOTION_TEMPLATE.format(motion=motion)

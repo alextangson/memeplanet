@@ -36,3 +36,9 @@ def test_extract_b64_image():
 def test_extract_empty_raises_with_detail():
     with pytest.raises(RuntimeError, match="quota"):
         extract_seedream_image({"error": {"message": "quota exceeded"}})
+
+
+def test_build_payload_without_reference_is_t2i():
+    payload = build_payload("画一只树懒", None, model="doubao-seedream-4-0-250828")
+    assert "image" not in payload
+    assert payload["prompt"] == "画一只树懒"

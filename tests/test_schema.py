@@ -92,3 +92,10 @@ def test_invalid_subject_rejected():
     data["subject"] = "robot"
     with pytest.raises(ValidationError):
         Pack.model_validate(data)
+
+
+def test_subject_desc_optional():
+    data = _minimal_pack_dict()
+    assert Pack.model_validate(data).subject_desc == ""
+    data["subject_desc"] = "一只穿围裙的树懒玩偶"
+    assert Pack.model_validate(data).subject_desc == "一只穿围裙的树懒玩偶"
