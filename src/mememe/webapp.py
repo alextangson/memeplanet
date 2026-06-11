@@ -37,9 +37,12 @@ from mememe.providers.base import ImageProvider
 OUTPUT_ROOT = Path("out/web")
 LEADS_FILE = Path("out/leads.jsonl")
 EVENTS_FILE = Path("out/events.jsonl")  # 转化漏斗埋点（unlock_shown/unlock_free_click）
+# B 端联系入口：放一张微信二维码图在这就会出现在 /custom 页（个人数据，不进 repo）
+CONTACT_QR_FILE = Path(os.environ.get("MEMEME_CONTACT_QR", "out/contact-qr.png"))
 PACKS_DIR = Path(os.environ.get("MEMEME_PACKS_DIR", "packs"))
 CUSTOM_PACKS_DIR = Path(os.environ.get("MEMEME_CUSTOM_PACKS_DIR", "packs/custom"))
-DEFAULT_QR_URL = "https://github.com/alextangson/memeplanet"
+# 晒图卡二维码落地页；部署后设 MEMEME_QR_URL=https://meme-planet.com/
+DEFAULT_QR_URL = os.environ.get("MEMEME_QR_URL", "https://github.com/alextangson/memeplanet")
 
 
 def _make_scriptwriter():
@@ -504,6 +507,12 @@ def create_app() -> FastAPI:
             "meme_count": len(pack.memes),
             "captions": [m.caption for m in pack.memes[:8]],
         }
+
+    @app.get("/api/contact-qr")
+    def contact_qr() -> FileResponse:
+        if not CONTACT_QR_FILE.exists():
+            raise HTTPException(404, "not found")
+        return FileResponse(CONTACT_QR_FILE, media_type="image/png")
 
     @app.get("/api/pack-preview/{pack_id}")
     def pack_preview(pack_id: str) -> FileResponse:

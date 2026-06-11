@@ -159,6 +159,12 @@
       <textarea class="search" id="leadNeed" placeholder="简单说说需求：比如咖啡店吉祥物一套 16 张，要上架微信商店…" aria-label="定制需求"></textarea>
       <button class="btn primary" id="leadBtn" style="align-self:flex-end">提交需求</button>
     </div>
+    <div id="contactQr" style="display:none;margin-top:16px;padding-top:16px;border-top:1.5px dashed var(--line);text-align:center">
+      <p style="font-size:13.5px;color:var(--ink-2);margin-bottom:10px">急事？直接扫码加微信聊</p>
+      <img src="/api/contact-qr" alt="微信联系二维码" loading="lazy"
+           style="width:180px;border-radius:14px;border:2px solid var(--line)"
+           onload="document.getElementById('contactQr').style.display='block'">
+    </div>
   </div>
   </main>
 

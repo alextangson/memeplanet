@@ -262,6 +262,30 @@ def test_platform_pack_includes_anim_gifs(client):
     assert "动图/02.gif" not in names
 
 
+def test_contact_qr_served_only_when_configured(client, tmp_path, monkeypatch):
+    monkeypatch.setattr(webapp, "CONTACT_QR_FILE", tmp_path / "contact-qr.png")
+    assert client.get("/api/contact-qr").status_code == 404
+
+    buf = io.BytesIO()
+    Image.new("RGB", (100, 100), (0, 0, 0)).save(buf, format="PNG")
+    (tmp_path / "contact-qr.png").write_bytes(buf.getvalue())
+    resp = client.get("/api/contact-qr")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "image/png"
+
+
+def test_qr_url_overridable_via_env(monkeypatch):
+    import importlib
+
+    monkeypatch.setenv("MEMEME_QR_URL", "https://meme-planet.com/")
+    importlib.reload(webapp)
+    try:
+        assert webapp.DEFAULT_QR_URL == "https://meme-planet.com/"
+    finally:
+        monkeypatch.delenv("MEMEME_QR_URL")
+        importlib.reload(webapp)
+
+
 def test_events_endpoint_appends_jsonl(client, tmp_path, monkeypatch):
     import json as _json
 
