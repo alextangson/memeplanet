@@ -7,6 +7,8 @@ written to disk and vanishes when the server stops.
 import importlib.util
 import json
 import os
+
+import yaml
 import threading
 import time
 import uuid
@@ -33,7 +35,25 @@ from mememe.providers.base import ImageProvider
 
 OUTPUT_ROOT = Path("out/web")
 PACKS_DIR = Path(os.environ.get("MEMEME_PACKS_DIR", "packs"))
+CUSTOM_PACKS_DIR = Path(os.environ.get("MEMEME_CUSTOM_PACKS_DIR", "packs/custom"))
 DEFAULT_QR_URL = "https://github.com/alextangson/meme-me"
+
+
+def _make_scriptwriter():
+    from mememe.core.scriptwriter import Scriptwriter
+    from mememe.providers.deepseek import DeepSeekChat
+
+    return Scriptwriter(DeepSeekChat())
+
+
+def _find_pack_path(pack_id: str) -> Path | None:
+    if "/" in pack_id or ".." in pack_id:
+        return None
+    for base in (PACKS_DIR, CUSTOM_PACKS_DIR):
+        path = base / f"{pack_id}.yaml"
+        if path.exists():
+            return path
+    return None
 
 
 def _make_provider(name: str = "") -> ImageProvider:
@@ -124,8 +144,8 @@ def _load_jobs() -> dict[str, Job]:
         except (ValueError, OSError):
             continue
         pack = None
-        pack_file = PACKS_DIR / f"{meta.get('pack_id', '')}.yaml"
-        if pack_file.exists():
+        pack_file = _find_pack_path(meta.get("pack_id", ""))
+        if pack_file is not None:
             try:
                 pack = load_pack(pack_file)
             except Exception:
@@ -288,23 +308,75 @@ def create_app() -> FastAPI:
     @app.get("/api/packs")
     def list_packs() -> list[dict]:
         packs = []
-        for path in sorted(PACKS_DIR.glob("*.yaml")):
-            pack = load_pack(path)
-            has_preview = (PACKS_DIR / "previews" / f"{pack.id}.png").exists()
-            packs.append(
-                {
-                    "id": pack.id,
-                    "name": pack.name,
-                    "description": pack.description,
-                    "meme_count": len(pack.memes),
-                    "captions": [m.caption for m in pack.memes],
-                    "preview_url": f"/api/pack-preview/{pack.id}" if has_preview else "",
-                }
-            )
-        # 旗舰在前，新投稿的包按字母序排在后面
+        sources = [(PACKS_DIR, False)]
+        if CUSTOM_PACKS_DIR.exists():
+            sources.append((CUSTOM_PACKS_DIR, True))
+        for base, is_custom in sources:
+            for path in sorted(base.glob("*.yaml")):
+                pack = load_pack(path)
+                has_preview = (PACKS_DIR / "previews" / f"{pack.id}.png").exists()
+                packs.append(
+                    {
+                        "id": pack.id,
+                        "name": pack.name,
+                        "description": pack.description,
+                        "meme_count": len(pack.memes),
+                        "captions": [m.caption for m in pack.memes],
+                        "preview_url": f"/api/pack-preview/{pack.id}" if has_preview else "",
+                        "custom": is_custom,
+                    }
+                )
+        # 自己的定制包最前，旗舰其次，新投稿按字母序殿后
         order = {"shechu": 0, "maomi": 1, "gouzi": 2, "yinyang": 3, "lianai": 4, "ganfan": 5, "qimo": 6, "hajimi": 7}
-        packs.sort(key=lambda p: (order.get(p["id"], 99), p["id"]))
+        packs.sort(key=lambda p: (not p["custom"], order.get(p["id"], 99), p["id"]))
         return packs
+
+    drafts: dict[str, list] = {}
+
+    @app.post("/api/agent/chat")
+    def agent_chat(message: str = Form(...), draft_id: str = Form("")) -> dict:
+        if not draft_id:
+            draft_id = uuid.uuid4().hex[:12]
+            drafts[draft_id] = []
+        history = drafts.get(draft_id)
+        if history is None:
+            raise HTTPException(404, "对话不存在，刷新页面重新开始")
+        history.append({"role": "user", "content": message})
+        try:
+            reply = _make_scriptwriter().reply(history)
+        except Exception as e:
+            history.pop()
+            raise HTTPException(502, f"策划暂时掉线了：{e}")
+        history.append({"role": "assistant", "content": reply})
+        return {"draft_id": draft_id, "reply": reply}
+
+    @app.post("/api/agent/draft")
+    def agent_draft(draft_id: str = Form(...)) -> dict:
+        history = drafts.get(draft_id)
+        if not history:
+            raise HTTPException(404, "对话不存在，先聊两句再生成")
+        try:
+            pack = _make_scriptwriter().draft(history)
+        except ValueError as e:
+            raise HTTPException(422, str(e))
+        CUSTOM_PACKS_DIR.mkdir(parents=True, exist_ok=True)
+        pack_id = pack.id
+        n = 2
+        while (CUSTOM_PACKS_DIR / f"{pack_id}.yaml").exists():
+            pack_id = f"{pack.id}-{n}"
+            n += 1
+        data = pack.model_dump()
+        data["id"] = pack_id
+        (CUSTOM_PACKS_DIR / f"{pack_id}.yaml").write_text(
+            yaml.safe_dump(data, allow_unicode=True, sort_keys=False),
+            encoding="utf-8",
+        )
+        return {
+            "pack_id": pack_id,
+            "name": pack.name,
+            "meme_count": len(pack.memes),
+            "captions": [m.caption for m in pack.memes[:8]],
+        }
 
     @app.get("/api/pack-preview/{pack_id}")
     def pack_preview(pack_id: str) -> FileResponse:
@@ -322,8 +394,8 @@ def create_app() -> FastAPI:
         full: bool = Form(False),
         provider: str = Form(""),
     ) -> dict:
-        pack_path = PACKS_DIR / f"{pack_id}.yaml"
-        if not pack_path.exists():
+        pack_path = _find_pack_path(pack_id)
+        if pack_path is None:
             raise HTTPException(404, f"pack not found: {pack_id}")
         pack = load_pack(pack_path)
         job_id = uuid.uuid4().hex[:12]
@@ -509,6 +581,21 @@ _INDEX_HTML = """<!DOCTYPE html>
   .drop.has { border-style: solid; border-color: #2a9d5c; color: #2a9d5c; }
   .drop img { max-height: 110px; border-radius: 10px; display: block; margin: 0 auto 10px; }
   .privacy { font-size: 12px; color: #bbb; text-align: center; margin-top: 8px; }
+  .chatbox { max-height: 260px; overflow-y: auto; display: flex; flex-direction: column;
+             gap: 8px; padding: 4px 2px; }
+  .bub { max-width: 85%; padding: 9px 12px; border-radius: 14px; font-size: 14px;
+         line-height: 1.6; white-space: pre-wrap; }
+  .bub.ai { background: #f6f2ec; color: #3d3326; align-self: flex-start;
+            border-bottom-left-radius: 4px; }
+  .bub.me { background: #c9551e; color: #fff; align-self: flex-end;
+            border-bottom-right-radius: 4px; }
+  .bub.busy { color: #b3a392; animation: blink 1.2s ease infinite; }
+  .abtn { border: 1.5px solid #e0d5c8; background: #fff; border-radius: 10px;
+          padding: 10px 14px; font-size: 14px; cursor: pointer; white-space: nowrap; }
+  .abtn.primary { background: #c9551e; border-color: #c9551e; color: #fff; font-weight: 600; }
+  .abtn:disabled { opacity: .5; cursor: not-allowed; }
+  .cbadge { font-size: 10px; font-weight: 700; background: #2a9d5c; color: #fff;
+            border-radius: 6px; padding: 2px 6px; margin-left: 6px; }
   .hist { cursor: grab; user-select: none; -webkit-user-select: none; }
   .hist:active { cursor: grabbing; }
   .hist img { -webkit-user-drag: none; }
@@ -602,6 +689,19 @@ _INDEX_HTML = """<!DOCTYPE html>
   </div>
 
   <div class="card">
+    <div class="label">2.5 · 没有合适的？和 AI 策划聊一套专属的（个人 / 情侣 / 品牌 IP 都行）</div>
+    <div class="chatbox" id="chatbox">
+      <div class="bub ai">嗨！想定制什么样的表情包？说说给谁用、什么场合～</div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <input class="packsearch" id="agentInput" style="margin:0;flex:1"
+             placeholder="比如：给我和对象的互怼表情包，她总说我直男…">
+      <button class="abtn" id="agentSend">发送</button>
+      <button class="abtn primary" id="agentDraft">✨生成剧本</button>
+    </div>
+  </div>
+
+  <div class="card">
     <div class="label">3 · 生成</div>
     <div class="row" style="margin-bottom:12px">
       <label class="toggle">模型
@@ -666,7 +766,7 @@ function renderPacks(filter) {
     const chips = p.captions.slice(0, 3).map(c => `<span>${c}</span>`).join('')
       + `<span>+${p.meme_count - 3}</span>`;
     div.innerHTML = `${p.preview_url ? `<img src="${p.preview_url}" loading="lazy">` : ''}
-      <div class="pname">${p.name}<span class="pcount">${p.meme_count}梗</span></div>
+      <div class="pname">${p.name}${p.custom ? '<span class="cbadge">定制</span>' : ''}<span class="pcount">${p.meme_count}梗</span></div>
       <div class="pdesc">${p.description || ''}</div>
       <div class="chips">${chips}</div>`;
     div.onclick = () => { packId = p.id; renderPacks($('psearch').value); };
@@ -674,11 +774,80 @@ function renderPacks(filter) {
   });
 }
 
-fetch('/api/packs').then(r => r.json()).then(packs => {
-  allPacks = packs;
-  renderPacks('');
-});
+function refreshPacks(selectId) {
+  return fetch('/api/packs').then(r => r.json()).then(packs => {
+    allPacks = packs;
+    if (selectId) packId = selectId;
+    renderPacks($('psearch') ? $('psearch').value : '');
+  });
+}
+
+refreshPacks();
 $('psearch').oninput = (e) => renderPacks(e.target.value);
+
+// ---- 对话定制 agent ----
+let agentDraftId = '';
+
+function bubble(text, cls) {
+  const box = $('chatbox');
+  const div = document.createElement('div');
+  div.className = 'bub ' + cls;
+  div.textContent = text;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+  return div;
+}
+
+async function agentSend() {
+  const text = $('agentInput').value.trim();
+  if (!text) return;
+  $('agentInput').value = '';
+  bubble(text, 'me');
+  const busy = bubble('策划思考中…', 'ai busy');
+  $('agentSend').disabled = true;
+  const fd = new FormData();
+  fd.append('message', text);
+  if (agentDraftId) fd.append('draft_id', agentDraftId);
+  try {
+    const resp = await fetch('/api/agent/chat', { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.detail || resp.status);
+    agentDraftId = data.draft_id;
+    busy.className = 'bub ai';
+    busy.textContent = data.reply;
+  } catch (e) {
+    busy.className = 'bub ai';
+    busy.textContent = '出错了：' + e.message;
+  }
+  $('agentSend').disabled = false;
+}
+
+async function agentMakeDraft() {
+  if (!agentDraftId) { bubble('先说说你的需求，聊一两句我才好出方案～', 'ai'); return; }
+  const busy = bubble('正在写剧本（约 20 秒）…', 'ai busy');
+  $('agentDraft').disabled = true;
+  const fd = new FormData();
+  fd.append('draft_id', agentDraftId);
+  try {
+    const resp = await fetch('/api/agent/draft', { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.detail || resp.status);
+    busy.className = 'bub ai';
+    busy.textContent = `「${data.name}」写好了！前 8 个梗：${data.captions.join('、')}。已加入上面的剧本列表（带「定制」角标），不满意继续跟我聊，再点生成会出新版本。`;
+    await refreshPacks(data.pack_id);
+    window.scrollTo({ top: $('packs').offsetTop - 80, behavior: 'smooth' });
+  } catch (e) {
+    busy.className = 'bub ai';
+    busy.textContent = '生成失败：' + e.message;
+  }
+  $('agentDraft').disabled = false;
+}
+
+$('agentSend').onclick = agentSend;
+$('agentDraft').onclick = agentMakeDraft;
+$('agentInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); agentSend(); }
+});
 
 $('file').onchange = (e) => {
   selfie = e.target.files[0];

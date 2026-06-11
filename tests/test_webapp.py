@@ -294,3 +294,76 @@ def test_packs_expose_preview_url(client):
 
 def test_unknown_pack_preview_404(client):
     assert client.get("/api/pack-preview/nope").status_code == 404
+
+
+@pytest.fixture()
+def agent_client(client, tmp_path, monkeypatch):
+    import json as _json
+
+    from mememe.core.scriptwriter import Scriptwriter
+
+    draft = {
+        "id": "dingzhi",
+        "name": "定制包",
+        "description": "测试定制",
+        "subject": "person",
+        "vibe": "测试氛围",
+        "memes": [
+            {"id": f"m{i}", "caption": f"梗{i}", "expression": "表情",
+             "action": "动作", "shot": "半身"}
+            for i in range(16)
+        ],
+    }
+
+    def fake_chat(messages, *, json_mode=False):
+        if json_mode:
+            return _json.dumps(draft, ensure_ascii=False)
+        return "想给谁做表情包呀？"
+
+    monkeypatch.setattr(webapp, "_make_scriptwriter", lambda: Scriptwriter(fake_chat))
+    monkeypatch.setattr(webapp, "CUSTOM_PACKS_DIR", tmp_path / "custom")
+    return client
+
+
+def test_agent_chat_keeps_history(agent_client):
+    r1 = agent_client.post("/api/agent/chat", data={"message": "我想定制"})
+    assert r1.status_code == 200
+    draft_id = r1.json()["draft_id"]
+    assert "表情包" in r1.json()["reply"]
+
+    r2 = agent_client.post(
+        "/api/agent/chat", data={"message": "给对象用", "draft_id": draft_id}
+    )
+    assert r2.json()["draft_id"] == draft_id
+
+
+def test_agent_draft_creates_custom_pack_visible_in_picker(agent_client):
+    draft_id = agent_client.post(
+        "/api/agent/chat", data={"message": "程序员上线日"}
+    ).json()["draft_id"]
+
+    resp = agent_client.post("/api/agent/draft", data={"draft_id": draft_id})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["pack_id"] == "dingzhi"
+
+    packs = agent_client.get("/api/packs").json()
+    custom = next(p for p in packs if p["id"] == "dingzhi")
+    assert custom["custom"] is True
+    assert custom["meme_count"] == 16
+    assert packs[0]["id"] == "dingzhi"  # 自己的定制包排最前
+
+
+def test_generate_works_with_custom_pack(agent_client):
+    draft_id = agent_client.post(
+        "/api/agent/chat", data={"message": "随便"}
+    ).json()["draft_id"]
+    agent_client.post("/api/agent/draft", data={"draft_id": draft_id})
+
+    resp = agent_client.post(
+        "/api/generate",
+        files={"selfie": ("me.jpg", _selfie_bytes(), "image/jpeg")},
+        data={"pack_id": "dingzhi"},
+    )
+    assert resp.status_code == 200
+    job = _wait_done(agent_client, resp.json()["job_id"])
+    assert job["status"] == "done"

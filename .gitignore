@@ -6,3 +6,4 @@ dist/
 out/
 *.egg-info/
 .env
+packs/custom/
