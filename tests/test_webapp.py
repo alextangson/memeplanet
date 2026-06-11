@@ -129,3 +129,53 @@ def test_retry_with_custom_caption(client):
     assert resp.status_code == 200
     _wait_done(client, job_id)
     assert any("老板再见" in p for p in client.fake_provider.prompts)
+
+
+def _tiny_gif() -> bytes:
+    buf = io.BytesIO()
+    img = Image.new("P", (240, 240), 0)
+    img.save(buf, format="GIF")
+    return buf.getvalue()
+
+
+def test_generation_persists_raw_images(client, tmp_path):
+    resp = client.post(
+        "/api/generate",
+        files={"selfie": ("me.jpg", _selfie_bytes(), "image/jpeg")},
+        data={"pack_id": "shechu"},
+    )
+    job_id = resp.json()["job_id"]
+    _wait_done(client, job_id)
+    raws = list(tmp_path.glob(f"{job_id}/raw-*.png"))
+    assert len(raws) == 8
+
+
+def test_animate_single_sticker(client, monkeypatch):
+    class FakeVideo:
+        def animate(self, prompt: str, image: bytes, **kw) -> bytes:
+            return b"MP4BYTES"
+
+    monkeypatch.setattr(webapp, "_make_video_provider", lambda: FakeVideo())
+    monkeypatch.setattr(webapp, "mp4_to_wechat_gif", lambda mp4, **kw: _tiny_gif())
+
+    resp = client.post(
+        "/api/generate",
+        files={"selfie": ("me.jpg", _selfie_bytes(), "image/jpeg")},
+        data={"pack_id": "shechu"},
+    )
+    job_id = resp.json()["job_id"]
+    _wait_done(client, job_id)
+
+    resp = client.post(f"/api/jobs/{job_id}/animate/2")
+    assert resp.status_code == 200
+
+    import time as _t
+
+    deadline = _t.time() + 10
+    while _t.time() < deadline:
+        job = client.get(f"/api/jobs/{job_id}").json()
+        if job["images"][1]["anim_status"] in ("done", "error"):
+            break
+        _t.sleep(0.05)
+    assert job["images"][1]["anim_status"] == "done"
+    assert client.get(job["images"][1]["anim_url"]).status_code == 200

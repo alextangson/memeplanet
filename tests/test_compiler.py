@@ -50,3 +50,18 @@ def test_caption_override_replaces_text():
     prompt = compile_meme(pack, pack.memes[0], caption_override="老板再见")
     assert "老板再见" in prompt
     assert pack.memes[0].caption not in prompt
+
+
+def test_compile_motion_uses_motion_or_falls_back():
+    from biaoqingbao.core.compiler import compile_motion
+
+    pack = load_pack(PACKS_DIR / "shechu.yaml")
+    meme = pack.memes[0]
+    prompt = compile_motion(pack, meme)
+    assert meme.action in prompt          # fallback: action drives the motion
+    assert "循环" in prompt
+    assert "纯白" in prompt
+
+    meme_with_motion = meme.model_copy(update={"motion": "手臂反复敬礼"})
+    prompt2 = compile_motion(pack, meme_with_motion)
+    assert "手臂反复敬礼" in prompt2

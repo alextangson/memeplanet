@@ -38,3 +38,14 @@ def compile_meme(pack: Pack, meme: Meme, caption_override: str | None = None) ->
 
 def compile_pack(pack: Pack) -> list[str]:
     return [compile_meme(pack, meme) for meme in pack.memes]
+
+
+_MOTION_TEMPLATE = """\
+让画面中的卡通角色动起来：{motion}。
+动作幅度适中、自然流畅、适合无缝循环播放。
+镜头固定不动，背景保持纯白，角色形象和画面文案保持不变。"""
+
+
+def compile_motion(pack: Pack, meme: Meme) -> str:
+    motion = meme.motion or f"{meme.expression}，重复做出「{meme.action}」的动作"
+    return _MOTION_TEMPLATE.format(motion=motion)

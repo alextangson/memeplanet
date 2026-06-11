@@ -11,11 +11,12 @@ import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse, HTMLResponse, Response
 
+from biaoqingbao.core.animate import mp4_to_wechat_gif
 from biaoqingbao.core.collage import build_collage
-from biaoqingbao.core.compiler import compile_meme
+from biaoqingbao.core.compiler import compile_meme, compile_motion
 from biaoqingbao.core.postprocess import (
     maybe_remove_background,
     to_sticker_gif,
@@ -38,6 +39,12 @@ def _make_provider(name: str = "") -> ImageProvider:
     from biaoqingbao.providers.gemini import GeminiProvider
 
     return GeminiProvider()
+
+
+def _make_video_provider():
+    from biaoqingbao.providers.seedance import SeedanceVideoProvider
+
+    return SeedanceVideoProvider()
 
 
 def _rembg_available() -> bool:
@@ -70,6 +77,7 @@ def _sticker_stem(job: Job, index: int) -> str:
 def _write_one(job: Job, index: int, raw: bytes) -> None:
     processed = maybe_remove_background(raw, enabled=_rembg_available())
     stem = _sticker_stem(job, index)
+    (job.out_dir / f"raw-{stem}.png").write_bytes(raw)  # animation needs ≥300px source
     (job.out_dir / f"{stem}.png").write_bytes(to_sticker_png(processed))
     (job.out_dir / f"{stem}.gif").write_bytes(to_sticker_gif(processed))
 
@@ -103,6 +111,24 @@ def _run_generation(job: Job, provider: ImageProvider) -> None:
         job.status = "done"
     except Exception as e:  # surface, don't swallow — UI shows it
         job.status = "error"
+        job.error = str(e)
+
+
+def _run_animate(job: Job, provider, index: int) -> None:
+    pos = index - 1
+    try:
+        raw = (job.out_dir / f"raw-{_sticker_stem(job, index)}.png").read_bytes()
+        prompt = compile_motion(job.pack, job.pack.memes[pos])
+        mp4 = provider.animate(prompt, raw)
+        gif = mp4_to_wechat_gif(mp4)
+        stem = _sticker_stem(job, index)
+        (job.out_dir / f"{stem}.anim.gif").write_bytes(gif)
+        with job.lock:
+            job.images[pos]["anim_status"] = "done"
+            job.images[pos]["anim_url"] = f"/files/{job.id}/{stem}.anim.gif"
+    except Exception as e:
+        with job.lock:
+            job.images[pos]["anim_status"] = "error"
         job.error = str(e)
 
 
@@ -186,7 +212,16 @@ def create_app() -> FastAPI:
             provider_name=provider,
         )
         job.images = [
-            {"index": i + 1, "id": m.id, "caption": m.caption, "status": "pending", "url": "", "gif_url": ""}
+            {
+                "index": i + 1,
+                "id": m.id,
+                "caption": m.caption,
+                "status": "pending",
+                "url": "",
+                "gif_url": "",
+                "anim_status": "none",
+                "anim_url": "",
+            }
             for i, m in enumerate(job.memes)
         ]
         jobs[job_id] = job
@@ -221,6 +256,49 @@ def create_app() -> FastAPI:
         ).start()
         return {"job_id": job_id}
 
+    @app.post("/api/jobs/{job_id}/animate/{index}")
+    def animate(job_id: str, index: int) -> dict:
+        job = jobs.get(job_id)
+        if job is None:
+            raise HTTPException(404, "job not found")
+        if not 1 <= index <= len(job.memes):
+            raise HTTPException(400, f"index must be 1..{len(job.memes)}")
+        with job.lock:
+            img = job.images[index - 1]
+            if img["status"] != "done":
+                raise HTTPException(409, "sticker not ready")
+            if img["anim_status"] == "running":
+                raise HTTPException(409, "already animating")
+            img["anim_status"] = "running"
+        threading.Thread(
+            target=_run_animate, args=(job, _make_video_provider(), index), daemon=True
+        ).start()
+        return {"job_id": job_id}
+
+    @app.get("/api/lan-qr")
+    def lan_qr(request: Request) -> Response:
+        import io as _io
+        import socket
+
+        import qrcode
+
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.connect(("223.5.5.5", 80))
+            ip = s.getsockname()[0]
+        finally:
+            s.close()
+        port = request.url.port or 80
+        url = f"http://{ip}:{port}/"
+        qr = qrcode.make(url)
+        buf = _io.BytesIO()
+        qr.save(buf, format="PNG")
+        return Response(
+            content=buf.getvalue(),
+            media_type="image/png",
+            headers={"X-Lan-Url": url},
+        )
+
     @app.get("/files/{job_id}/{filename}")
     def files(job_id: str, filename: str) -> FileResponse:
         job = jobs.get(job_id)
@@ -241,51 +319,81 @@ _INDEX_HTML = """<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>表情包工厂 · biaoqingbao</title>
 <style>
-  * { box-sizing: border-box; font-family: -apple-system, "PingFang SC", sans-serif; }
-  body { margin: 0; background: #faf8f5; color: #222; }
-  .wrap { max-width: 560px; margin: 0 auto; padding: 24px 16px 64px; }
-  h1 { font-size: 26px; margin: 8px 0 2px; }
-  .sub { color: #888; font-size: 13px; margin-bottom: 20px; }
-  .card { background: #fff; border: 1px solid #e8e4de; border-radius: 14px; padding: 16px; margin-bottom: 16px; }
-  .label { font-size: 13px; color: #999; margin-bottom: 8px; }
-  .drop { border: 2px dashed #ccc; border-radius: 12px; padding: 22px; text-align: center; cursor: pointer; color: #666; }
-  .drop.has { border-color: #2a9d5c; color: #2a9d5c; }
-  .drop img { max-height: 96px; border-radius: 8px; display: block; margin: 0 auto 8px; }
-  .privacy { font-size: 12px; color: #aaa; text-align: center; margin-top: 8px; }
-  .packs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
-  .pack { min-width: 120px; border: 2px solid #e0dcd5; border-radius: 12px; padding: 10px; cursor: pointer; font-size: 14px; }
-  .pack.sel { border-color: #222; font-weight: 600; }
-  .pack small { display: block; color: #999; font-size: 11px; margin-top: 4px; }
-  .row { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
-  button.go { flex: 1; background: #222; color: #fff; border: 0; border-radius: 999px; padding: 14px; font-size: 16px; cursor: pointer; }
-  button.go:disabled { background: #bbb; cursor: not-allowed; }
-  .toggle { font-size: 13px; color: #555; white-space: nowrap; }
+  * { box-sizing: border-box; font-family: -apple-system, "PingFang SC", sans-serif; margin: 0; }
+  body { background: #faf8f5; color: #1d1d1f; }
+  .wrap { max-width: 600px; margin: 0 auto; padding: 0 16px 80px; }
+  .hero { text-align: center; padding: 40px 16px 28px;
+          background: linear-gradient(160deg, #fff7ed 0%, #ffe8d6 55%, #ffd9c0 100%);
+          border-radius: 0 0 28px 28px; margin: 0 -16px 20px; }
+  .hero h1 { font-size: 32px; letter-spacing: 1px; }
+  .hero .tag { color: #8a6a52; font-size: 15px; margin-top: 8px; }
+  .steps { display: flex; justify-content: center; gap: 18px; margin-top: 18px;
+           font-size: 13px; color: #a07; color: #9a7b62; }
+  .steps span { background: #ffffffaa; border-radius: 999px; padding: 6px 14px; }
+  .card { background: #fff; border: 1px solid #eee4da; border-radius: 16px;
+          padding: 18px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(60,40,20,.04); }
+  .label { font-size: 13px; color: #b09880; font-weight: 600; margin-bottom: 10px; letter-spacing: .5px; }
+  .drop { border: 2px dashed #dcc9b6; border-radius: 14px; padding: 26px; text-align: center;
+          cursor: pointer; color: #8a6a52; transition: .15s; }
+  .drop:hover { border-color: #c97b4a; }
+  .drop.has { border-style: solid; border-color: #2a9d5c; color: #2a9d5c; }
+  .drop img { max-height: 110px; border-radius: 10px; display: block; margin: 0 auto 10px; }
+  .privacy { font-size: 12px; color: #bbb; text-align: center; margin-top: 8px; }
+  .packs { display: flex; gap: 10px; overflow-x: auto; padding: 2px 2px 6px; }
+  .pack { min-width: 138px; border: 2px solid #eee0d2; border-radius: 14px; padding: 12px;
+          cursor: pointer; font-size: 15px; font-weight: 600; transition: .15s; background:#fffdfa; }
+  .pack:hover { border-color: #c97b4a; }
+  .pack.sel { border-color: #c9551e; background: #fff3ea; }
+  .pack small { display: block; color: #a89b8d; font-size: 11px; margin-top: 6px;
+                font-weight: 400; line-height: 1.5; }
+  .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  select { border: 1px solid #ddd; border-radius: 8px; padding: 6px 8px; font-size: 13px; background:#fff; }
+  button.go { flex: 1; min-width: 200px; background: linear-gradient(135deg,#e2622b,#c9551e);
+              color: #fff; border: 0; border-radius: 999px; padding: 15px;
+              font-size: 16px; font-weight: 700; cursor: pointer; }
+  button.go:disabled { background: #d9cdc2; cursor: not-allowed; }
+  .toggle { font-size: 13px; color: #6f5d4d; white-space: nowrap; }
   .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-  .cell { aspect-ratio: 1; border: 1px solid #e8e4de; border-radius: 10px; position: relative;
-          display: flex; align-items: center; justify-content: center; overflow: hidden; background: #f3f1ed; }
+  @media (max-width: 430px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+  .cell { aspect-ratio: 1; border: 1px solid #efe5da; border-radius: 12px; position: relative;
+          display: flex; align-items: center; justify-content: center; overflow: hidden; background: #f6f2ec; }
   .cell img { width: 100%; height: 100%; object-fit: contain; animation: pop .3s ease; }
   @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-  .cell .cap { position: absolute; bottom: 4px; left: 0; right: 0; text-align: center; font-size: 11px; color: #999; pointer-events: none; }
-  .cell .spin { width: 22px; height: 22px; border: 3px solid #ddd; border-top-color: #555; border-radius: 50%; animation: r 1s linear infinite; }
+  .cap { position: absolute; bottom: 5px; left: 0; right: 0; text-align: center;
+         font-size: 11px; color: #b3a392; pointer-events: none; }
+  .spin { width: 22px; height: 22px; border: 3px solid #e8ddd0; border-top-color: #c9551e;
+          border-radius: 50%; animation: r 1s linear infinite; }
   @keyframes r { to { transform: rotate(360deg); } }
-  .cell .redo { position: absolute; top: 4px; right: 4px; font-size: 11px; background: #fff; border: 1px solid #ddd;
-                border-radius: 6px; padding: 2px 6px; cursor: pointer; display: none; }
-  .cell:hover .redo { display: block; }
-  .collage img { width: 100%; border-radius: 12px; border: 1px solid #e8e4de; }
-  .hint { font-size: 13px; color: #888; line-height: 1.7; }
-  .err { color: #c0392b; font-size: 13px; white-space: pre-wrap; }
+  .act { position: absolute; top: 4px; font-size: 12px; background: #fffffff0; border: 1px solid #e5d8ca;
+         border-radius: 8px; padding: 3px 7px; cursor: pointer; line-height: 1; }
+  .act.redo { left: 4px; }
+  .act.anim { right: 4px; }
+  .badge { position: absolute; top: 4px; right: 4px; font-size: 10px; font-weight: 700;
+           background: #c9551e; color: #fff; border-radius: 6px; padding: 3px 6px; pointer-events:none; }
+  .badge.busy { background: #8a6a52; animation: blink 1.2s ease infinite; }
+  @keyframes blink { 50% { opacity: .45; } }
+  .collage img { width: 100%; border-radius: 14px; border: 1px solid #eee4da; }
+  .hint { font-size: 13px; color: #998a7a; line-height: 1.8; margin-top: 10px; }
+  .err { color: #c0392b; font-size: 13px; white-space: pre-wrap; margin-top: 8px; }
+  .qrbox { display: none; text-align: center; }
+  .qrbox img { width: 132px; height: 132px; }
+  @media (min-width: 700px) { .qrbox.lan { display: block; } }
+  footer { text-align: center; color: #c7b9aa; font-size: 12px; margin-top: 28px; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>表情包工厂</h1>
-  <div class="sub">一张自拍 → 一套微信表情包（本地运行，照片只发往你配置的 API）</div>
+  <div class="hero">
+    <h1>表情包工厂</h1>
+    <div class="tag">一张自拍，变成一整套微信表情包</div>
+    <div class="steps"><span>① 上传自拍</span><span>② 选梗剧本</span><span>③ 逐张揭晓</span></div>
+  </div>
 
   <div class="card">
     <div class="label">1 · 上传一张正脸自拍</div>
-    <div class="drop" id="drop" onclick="document.getElementById('file').click()">点击选择照片</div>
+    <div class="drop" id="drop" onclick="document.getElementById('file').click()">📷 点击选择照片</div>
     <input type="file" id="file" accept="image/*" hidden>
-    <div class="privacy">照片只存在内存里，服务停了就没了</div>
+    <div class="privacy">照片只存在内存里，服务停止即消失</div>
   </div>
 
   <div class="card">
@@ -294,8 +402,9 @@ _INDEX_HTML = """<!DOCTYPE html>
   </div>
 
   <div class="card">
-    <div class="row" style="margin-bottom:10px">
-      <label class="toggle">模型：
+    <div class="label">3 · 生成</div>
+    <div class="row" style="margin-bottom:12px">
+      <label class="toggle">模型
         <select id="prov">
           <option value="gemini">Gemini（中转）</option>
           <option value="seedream">即梦 Seedream</option>
@@ -303,27 +412,32 @@ _INDEX_HTML = """<!DOCTYPE html>
       </label>
       <label class="toggle"><input type="checkbox" id="full"> 全套16张</label>
     </div>
-    <div class="row">
-      <button class="go" id="go" disabled>生成我的表情包</button>
-    </div>
+    <div class="row"><button class="go" id="go" disabled>生成我的表情包</button></div>
     <div class="err" id="err"></div>
   </div>
 
   <div class="card" id="resultCard" style="display:none">
-    <div class="label">3 · 逐张揭晓（悬停可单张重摇）</div>
+    <div class="label">4 · 逐张揭晓</div>
     <div class="grid" id="grid"></div>
+    <div class="hint">🔄 重摇换一张（可改文案）｜✨ 让它动起来（约 1-2 分钟）<br>
+    手机上：长按图片保存 → 微信里发给自己 → 长按「添加到表情」</div>
   </div>
 
   <div class="card collage" id="collageCard" style="display:none">
-    <div class="label">4 · 合集晒图卡（发朋友圈用这张）</div>
+    <div class="label">5 · 合集晒图卡（发朋友圈用这张）</div>
     <img id="collageImg">
-    <div class="hint">单张表情：长按/右键保存 PNG，或点格子打开 GIF 版。逐张发到微信里长按「添加到表情」。</div>
   </div>
+
+  <div class="card qrbox" id="qrbox">
+    <div class="label">📱 手机扫码打开本页，长按直接保存</div>
+    <img src="/api/lan-qr" onload="this.parentElement.classList.add('lan')" onerror="this.parentElement.style.display='none'">
+  </div>
+
+  <footer>biaoqingbao · 本地运行 · Apache-2.0</footer>
 </div>
 
 <script>
 let selfie = null, packId = null, jobId = null, timer = null;
-
 const $ = (id) => document.getElementById(id);
 
 fetch('/api/packs').then(r => r.json()).then(packs => {
@@ -331,7 +445,7 @@ fetch('/api/packs').then(r => r.json()).then(packs => {
   packs.forEach((p, i) => {
     const div = document.createElement('div');
     div.className = 'pack' + (i === 0 ? ' sel' : '');
-    div.innerHTML = `${p.name}<small>${p.meme_count} 个梗</small>`;
+    div.innerHTML = `${p.name}<small>${p.description || p.meme_count + ' 个梗'}</small>`;
     div.onclick = () => { box.querySelectorAll('.pack').forEach(e => e.classList.remove('sel')); div.classList.add('sel'); packId = p.id; };
     box.appendChild(div);
     if (i === 0) packId = p.id;
@@ -343,7 +457,7 @@ $('file').onchange = (e) => {
   if (!selfie) return;
   const drop = $('drop');
   drop.classList.add('has');
-  drop.innerHTML = `<img src="${URL.createObjectURL(selfie)}">${selfie.name}`;
+  drop.innerHTML = `<img src="${URL.createObjectURL(selfie)}">已选择，点击可更换`;
   $('go').disabled = false;
 };
 
@@ -359,21 +473,27 @@ $('go').onclick = async () => {
   jobId = (await resp.json()).job_id;
   $('resultCard').style.display = 'block';
   $('collageCard').style.display = 'none';
-  timer = setInterval(poll, 800);
+  $('grid').innerHTML = '';
+  startPoll();
 };
+
+function startPoll() { if (timer) clearInterval(timer); timer = setInterval(poll, 1000); }
 
 async function poll() {
   const resp = await fetch(`/api/jobs/${jobId}`);
   if (!resp.ok) return;
   const job = await resp.json();
   render(job);
-  if (job.status !== 'running') {
-    clearInterval(timer);
+  const busy = job.status === 'running' || job.images.some(i => i.anim_status === 'running');
+  if (!busy) {
+    clearInterval(timer); timer = null;
     $('go').disabled = false;
     if (job.error) $('err').textContent = job.error;
-    if (job.collage_url) { $('collageImg').src = job.collage_url + '?t=' + Date.now(); $('collageCard').style.display = 'block'; }
   }
+  if (job.collage_url) { $('collageImg').src = job.collage_url + '?t=' + (job.status==='running'?0:Date.now()); $('collageCard').style.display = 'block'; }
 }
+
+function cellState(img) { return img.status + ':' + img.anim_status; }
 
 function render(job) {
   const grid = $('grid');
@@ -387,17 +507,27 @@ function render(job) {
   }
   job.images.forEach(img => {
     const cell = $('cell-' + img.index);
-    if (img.status === 'done' && !cell.querySelector('img')) {
-      cell.innerHTML = `<img src="${img.url}?t=${Date.now()}"><div class="redo">重摇</div>`;
-      cell.querySelector('img').onclick = () => window.open(img.gif_url);
-      cell.querySelector('.redo').onclick = (e) => { e.stopPropagation(); retry(img.index); };
-    } else if (img.status === 'running' && !cell.querySelector('.spin')) {
-      cell.innerHTML = `<div class="spin"></div><div class="cap">${img.caption}</div>`;
-    } else if (img.status === 'pending' && !cell.querySelector('.cap')) {
+    const state = cellState(img);
+    if (cell.dataset.state === state) return;
+    cell.dataset.state = state;
+    if (img.status === 'pending') {
       cell.innerHTML = `<div class="cap">${img.caption}</div>`;
+    } else if (img.status === 'running') {
+      cell.innerHTML = `<div class="spin"></div><div class="cap">${img.caption}</div>`;
     } else if (img.status === 'error') {
-      cell.innerHTML = `<div class="cap">失败，可重摇</div><div class="redo">重摇</div>`;
+      cell.innerHTML = `<div class="cap">失败</div><div class="act redo">🔄</div>`;
       cell.querySelector('.redo').onclick = () => retry(img.index);
+    } else if (img.anim_status === 'done') {
+      cell.innerHTML = `<img src="${img.anim_url}?t=${Date.now()}"><div class="badge">GIF</div>`;
+    } else if (img.anim_status === 'running') {
+      cell.innerHTML = `<img src="${img.url}"><div class="badge busy">🎬 动图中</div>`;
+    } else {
+      const animBtn = img.anim_status === 'error' ? '✨重试' : '✨';
+      cell.innerHTML = `<img src="${img.url}?t=${Date.now()}">
+        <div class="act redo" title="重摇">🔄</div>
+        <div class="act anim" title="动起来">${animBtn}</div>`;
+      cell.querySelector('.redo').onclick = (e) => { e.stopPropagation(); retry(img.index); };
+      cell.querySelector('.anim').onclick = (e) => { e.stopPropagation(); animate(img.index); };
     }
   });
 }
@@ -406,11 +536,17 @@ async function retry(index) {
   const text = prompt('想换的文案？留空保持原文案（也可以只重摇不改字）', '');
   if (text === null) return;
   const cell = $('cell-' + index);
-  cell.innerHTML = '<div class="spin"></div>';
+  cell.dataset.state = ''; cell.innerHTML = '<div class="spin"></div>';
   const fd = new FormData();
   if (text.trim()) fd.append('caption', text.trim());
   await fetch(`/api/jobs/${jobId}/retry/${index}`, { method: 'POST', body: fd });
-  timer = setInterval(poll, 800);
+  startPoll();
+}
+
+async function animate(index) {
+  const resp = await fetch(`/api/jobs/${jobId}/animate/${index}`, { method: 'POST' });
+  if (!resp.ok) { $('err').textContent = await resp.text(); return; }
+  startPoll();
 }
 </script>
 </body>

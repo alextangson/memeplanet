@@ -14,6 +14,7 @@ class Meme(BaseModel):
     expression: str = Field(min_length=1)
     action: str = Field(min_length=1)
     shot: str = Field(min_length=1)
+    motion: str = ""  # 动图的运动描述；留空则由 action 推导
 
 
 class Pack(BaseModel):

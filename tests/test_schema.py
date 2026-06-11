@@ -69,3 +69,12 @@ def test_empty_memes_rejected():
     data["memes"] = []
     with pytest.raises(ValidationError):
         Pack.model_validate(data)
+
+
+def test_meme_motion_field_optional_with_default():
+    data = _minimal_pack_dict()
+    pack = Pack.model_validate(data)
+    assert pack.memes[0].motion == ""
+    data["memes"][0]["motion"] = "敬礼的手上下挥动"
+    pack = Pack.model_validate(data)
+    assert pack.memes[0].motion == "敬礼的手上下挥动"
