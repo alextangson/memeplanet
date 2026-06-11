@@ -1,0 +1,28 @@
+[project]
+name = "biaoqingbao"
+version = "0.1.0"
+description = "一张自拍生成整套微信表情包 — turn one selfie into a full WeChat sticker pack"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.7",
+    "pyyaml>=6.0",
+    "typer>=0.12",
+    "pillow>=10.3",
+    "qrcode[pil]>=7.4",
+    "google-genai>=1.0",
+]
+
+[project.optional-dependencies]
+rembg = ["rembg>=2.0", "onnxruntime>=1.18"]
+
+[project.scripts]
+biaoqingbao = "biaoqingbao.cli:app"
+
+[dependency-groups]
+dev = ["pytest>=8.0"]
+
+[build-system]
+requires = ["uv_build>=0.9"]
+build-backend = "uv_build"

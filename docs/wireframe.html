@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head><meta charset="utf-8"><title>biaoqingbao wireframe</title>
+<style>
+  /* Intentionally rough wireframe: system fonts, gray borders, no color */
+  * { box-sizing: border-box; font-family: -apple-system, "PingFang SC", sans-serif; }
+  body { background:#fafafa; margin:0; display:flex; gap:24px; justify-content:center; padding:24px; }
+  .phone { width:390px; background:#fff; border:2px solid #999; border-radius:16px; padding:16px; }
+  .label { font-size:11px; color:#888; text-transform:uppercase; letter-spacing:1px; margin:14px 0 6px; }
+  .box { border:1.5px dashed #aaa; border-radius:10px; padding:12px; text-align:center; color:#555; }
+  h1 { font-size:20px; margin:4px 0; } h2 { font-size:15px; margin:2px 0; color:#333; }
+  .hero { display:flex; align-items:center; gap:8px; justify-content:center; padding:14px 6px; border:1.5px solid #bbb; border-radius:12px; }
+  .selfie { width:72px; height:72px; border:1.5px solid #888; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:10px; color:#777;}
+  .arrow { font-size:20px; color:#666; }
+  .grid3 { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; width:150px; }
+  .grid3 div { aspect-ratio:1; border:1px solid #999; border-radius:6px; font-size:9px; display:flex; align-items:center; justify-content:center; color:#777; background:#f3f3f3;}
+  .packs { display:flex; gap:8px; overflow-x:auto; }
+  .pack { min-width:104px; border:1.5px solid #999; border-radius:10px; padding:8px; font-size:12px; text-align:center; }
+  .pack small{ color:#888; display:block; font-size:10px; margin-top:4px;}
+  .pack.sel { border-width:3px; }
+  .cta { border:2px solid #444; border-radius:24px; padding:12px; text-align:center; font-weight:600; margin-top:10px;}
+  .note { font-size:11px; color:#777; text-align:center; margin-top:6px; }
+  .result-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:6px;}
+  .result-grid div { aspect-ratio:1; border:1px solid #999; border-radius:6px; font-size:9px; display:flex; align-items:center; justify-content:center; color:#777; text-align:center; }
+  .locked { background:repeating-linear-gradient(45deg,#eee,#eee 4px,#fff 4px,#fff 8px); color:#aaa; }
+  .share { border:2px solid #777; border-radius:10px; padding:10px; margin-top:10px; display:flex; gap:10px; align-items:center;}
+  .qr { width:54px; height:54px; border:1.5px solid #666; display:flex; align-items:center; justify-content:center; font-size:9px; color:#666;}
+  .split { display:flex; gap:8px; margin-top:10px; }
+  .tier { flex:1; border:1.5px solid #999; border-radius:10px; padding:10px; font-size:12px; }
+  .tier b { display:block; font-size:13px; margin-bottom:4px;}
+</style></head>
+<body>
+  <!-- Screen 1: landing + upload + pack pick. Hero shows the transformation promise instantly -->
+  <div class="phone">
+    <h1>表情包工厂 <span style="font-size:11px;color:#888">biaoqingbao</span></h1>
+    <div class="label">Hero — 3秒看懂产品</div>
+    <div class="hero">
+      <div class="selfie">你的自拍</div>
+      <div class="arrow">→</div>
+      <div class="grid3"><div>哈?</div><div>摸鱼</div><div>收到</div><div>裂开</div><div>在吗</div><div>泪目</div><div>加油</div><div>勿cue</div><div>+8</div></div>
+    </div>
+    <div class="label">上传区 — 信任文案紧贴按钮</div>
+    <div class="box">📷 上传一张正脸自拍<br><small style="color:#999">照片仅用于本次生成 · 1小时后自动删除</small></div>
+    <div class="label">梗剧本选择 — 横滑卡片，社区可PR新包</div>
+    <div class="packs">
+      <div class="pack sel">社畜的一天<small>16个梗 · 打工人</small></div>
+      <div class="pack">已读乱回<small>16个梗 · 阴阳怪气</small></div>
+      <div class="pack">哈基米<small>16个梗 · 猫系</small></div>
+      <div class="pack">+ 投稿</div>
+    </div>
+    <div class="cta">生成我的表情包（免费8张）</div>
+    <div class="note">无需注册 · 30秒出图</div>
+  </div>
+
+  <!-- Screen 2: result. Free 8 unlocked, 8 locked behind pay; share card is the viral artifact -->
+  <div class="phone">
+    <h2>生成结果（状态：完成）</h2>
+    <div class="label">16张网格 — 免费8张 + 锁定8张(含动图)</div>
+    <div class="result-grid">
+      <div>摸鱼</div><div>收到</div><div>裂开</div><div>在吗</div>
+      <div>泪目</div><div>哈?</div><div>加油</div><div>勿cue</div>
+      <div class="locked">🔒动图</div><div class="locked">🔒</div><div class="locked">🔒动图</div><div class="locked">🔒</div>
+      <div class="locked">🔒</div><div class="locked">🔒动图</div><div class="locked">🔒</div><div class="locked">🔒动图</div>
+    </div>
+    <div class="cta" style="border-style:dashed">解锁全套16张+动图 ¥9.9</div>
+    <div class="label">合集晒图卡 — 唯一带归因的产物</div>
+    <div class="share">
+      <div class="grid3" style="width:120px"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+      <div style="flex:1;font-size:12px;color:#555">九宫格合集图<br>长按保存 → 发朋友圈</div>
+      <div class="qr">QR<br>remix</div>
+    </div>
+    <div class="note">二维码 → "换上你的脸，30秒出同款"</div>
+    <div class="split">
+      <div class="tier"><b>保存到微信</b>逐张长按收藏，或下载ZIP</div>
+      <div class="tier"><b>晒合集图</b>朋友圈/小红书 传播入口</div>
+    </div>
+  </div>
+</body></html>

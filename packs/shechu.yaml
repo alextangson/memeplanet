@@ -1,0 +1,115 @@
+# 社畜的一天 — biaoqingbao 首发梗剧本
+# 顺序即叙事：从周一早晨到下班跑路。前 8 个是免费层（最高 sendability 优先）。
+# 投稿规范见 packs/CONTRIBUTING.md（Stage 2a 补全）
+
+id: shechu
+name: 社畜的一天
+description: 打工人日常的 16 个高频瞬间，从周一去世到下班告辞
+version: 1
+language: zh
+
+# 全局风格块：每张 prompt 都注入，保证 16 张是同一个角色、同一种画风
+style: |
+  Q版三头身（chibi）贴纸插画风格，粗白色描边，背景纯色干净（便于抠图）。
+  人物特征必须与参考照片一致并贯穿全套：发型、脸型、肤色、眼镜/配饰等标志性特征。
+  表情夸张、动作戏剧化，微信表情包审美。
+  文案以大号中文手写体渲染在画面下方居中，字色深、带白边，清晰可读。
+
+memes:
+  # ---- 免费层（前 8 个，sendability 最高）----
+  - id: shoudao
+    caption: 收到
+    expression: 麻木的职业假笑，眼神空洞
+    action: 标准敬礼，身体笔直
+    shot: 半身
+
+  - id: yidu-luanhui
+    caption: 已读乱回
+    expression: 心不在焉，眼睛看向别处
+    action: 一只手随意敲手机，头都不抬
+    shot: 半身
+
+  - id: moyu
+    caption: 摸鱼中
+    expression: 偷感很重的窃喜，眯眼坏笑
+    action: 抱着一条大鱼，鬼鬼祟祟回头张望
+    shot: 全身
+
+  - id: liekai
+    caption: 裂开
+    expression: 瞳孔地震，表情崩坏
+    action: 头顶出现裂缝特效，双手抱头
+    shot: 头肩特写
+
+  - id: zaima-wucue
+    caption: 在吗？勿cue
+    expression: 惊恐瞪眼，冷汗直流
+    action: 缩成一团往桌子底下钻
+    shot: 全身
+
+  - id: zhouyi-qushi
+    caption: 周一，去世
+    expression: 灵魂出窍的死鱼眼
+    action: 平躺在床上，灵魂呈半透明状飘出
+    shot: 全身侧视
+
+  - id: leimu
+    caption: 泪目
+    expression: 含泪强笑，眼眶通红
+    action: 双手捧脸，泪水汪汪
+    shot: 头肩特写
+
+  - id: xiaban-chongci
+    caption: 下班！
+    expression: 狂喜，嘴角咧到耳根
+    action: 百米冲刺起跑姿势，背后烟尘特效
+    shot: 全身
+
+  # ---- 付费层（后 8 个）----
+  - id: zhuangsi
+    caption: 装死
+    expression: 闭眼，舌头微吐
+    action: 四脚朝天躺平，肚皮朝上
+    shot: 全身俯视
+
+  - id: haodene
+    caption: 好的呢～
+    expression: 皮笑肉不笑，太阳穴青筋微凸
+    action: 双手比心，姿势僵硬
+    shot: 半身
+
+  - id: rang-wo-kankan
+    caption: 让我看看
+    expression: 八卦兴奋，眼睛发光
+    action: 搬小板凳坐下，手捧瓜子前倾
+    shot: 全身
+
+  - id: huabing
+    caption: 饼，吃饱了
+    expression: 翻白眼，嘴角下撇
+    action: 面前堆满画出来的大饼，双臂抱胸
+    shot: 半身
+
+  - id: jiayou-ba
+    caption: 加油吧
+    expression: 苦笑中带着自嘲
+    action: 有气无力地举起小拳头
+    shot: 半身
+
+  - id: qian-daozhang
+    caption: 工资到账！
+    expression: 发疯式狂喜，眼睛变成￥符号
+    action: 双手向天撒纸币，原地起跳
+    shot: 全身
+
+  - id: gaoci
+    caption: 告辞
+    expression: 一脸正经的严肃
+    action: 古风抱拳行礼，转身欲走
+    shot: 全身
+
+  - id: woker
+    caption: 我哭死
+    expression: 夸张嚎啕大哭，眼泪喷射
+    action: 瘫坐地上捶地
+    shot: 全身
