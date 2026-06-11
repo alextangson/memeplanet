@@ -12,7 +12,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from biaoqingbao.core.postprocess import GIF_MAX_BYTES, STICKER_SIZE
+from mememe.core.postprocess import GIF_MAX_BYTES, STICKER_SIZE
 
 # (fps, palette colors, max seconds)
 _LADDER = [(12, 256, 5.0), (10, 128, 4.0), (8, 96, 3.0), (6, 64, 3.0)]

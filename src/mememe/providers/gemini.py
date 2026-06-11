@@ -28,7 +28,7 @@ class GeminiProvider:
         from google import genai
 
         kwargs: dict[str, Any] = {}
-        base_url = os.environ.get("BIAOQINGBAO_GEMINI_BASE_URL")
+        base_url = os.environ.get("MEMEME_GEMINI_BASE_URL")
         if base_url:
             from google.genai import types
 
@@ -36,7 +36,7 @@ class GeminiProvider:
         # api key read from GEMINI_API_KEY / GOOGLE_API_KEY env
         self._client = genai.Client(**kwargs)
         self._model = model or os.environ.get(
-            "BIAOQINGBAO_GEMINI_MODEL", DEFAULT_MODEL
+            "MEMEME_GEMINI_MODEL", DEFAULT_MODEL
         )
 
     def generate(self, prompt: str, reference: bytes) -> bytes:

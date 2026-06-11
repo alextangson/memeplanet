@@ -3,7 +3,7 @@ import io
 import pytest
 from PIL import Image
 
-from biaoqingbao.core.postprocess import (
+from mememe.core.postprocess import (
     STICKER_SIZE,
     maybe_remove_background,
     to_sticker_gif,

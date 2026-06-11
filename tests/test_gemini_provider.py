@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from biaoqingbao.providers.gemini import extract_image_bytes
+from mememe.providers.gemini import extract_image_bytes
 
 
 def _response(parts: list) -> SimpleNamespace:
@@ -42,8 +42,8 @@ def test_provider_uses_custom_base_url_from_env(monkeypatch):
     import google.genai
 
     monkeypatch.setattr(google.genai, "Client", FakeClient)
-    monkeypatch.setenv("BIAOQINGBAO_GEMINI_BASE_URL", "https://relay.example/gemini")
-    from biaoqingbao.providers.gemini import GeminiProvider
+    monkeypatch.setenv("MEMEME_GEMINI_BASE_URL", "https://relay.example/gemini")
+    from mememe.providers.gemini import GeminiProvider
 
     GeminiProvider()
     assert captured["http_options"].base_url == "https://relay.example/gemini"
@@ -59,8 +59,8 @@ def test_provider_default_has_no_base_url_override(monkeypatch):
     import google.genai
 
     monkeypatch.setattr(google.genai, "Client", FakeClient)
-    monkeypatch.delenv("BIAOQINGBAO_GEMINI_BASE_URL", raising=False)
-    from biaoqingbao.providers.gemini import GeminiProvider
+    monkeypatch.delenv("MEMEME_GEMINI_BASE_URL", raising=False)
+    from mememe.providers.gemini import GeminiProvider
 
     GeminiProvider()
     assert "http_options" not in captured
@@ -88,7 +88,7 @@ def test_generate_passes_square_image_config(monkeypatch):
     import google.genai
 
     monkeypatch.setattr(google.genai, "Client", FakeClient)
-    from biaoqingbao.providers.gemini import GeminiProvider
+    from mememe.providers.gemini import GeminiProvider
 
     out = GeminiProvider().generate("prompt", b"ref")
     assert out == b"IMG"
@@ -117,7 +117,7 @@ def test_generate_sniffs_reference_mime(monkeypatch):
     import google.genai
 
     monkeypatch.setattr(google.genai, "Client", FakeClient)
-    from biaoqingbao.providers.gemini import GeminiProvider
+    from mememe.providers.gemini import GeminiProvider
 
     png_bytes = b"\x89PNG\r\n\x1a\n" + b"rest"
     GeminiProvider().generate("p", png_bytes)

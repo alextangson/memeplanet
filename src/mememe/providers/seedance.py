@@ -51,7 +51,7 @@ class SeedanceVideoProvider:
         self._api_key = os.environ.get("ARK_API_KEY", "")
         if not self._api_key:
             raise RuntimeError("Seedance 需要 ARK_API_KEY 环境变量")
-        self._model = model or os.environ.get("BIAOQINGBAO_SEEDANCE_MODEL", DEFAULT_MODEL)
+        self._model = model or os.environ.get("MEMEME_SEEDANCE_MODEL", DEFAULT_MODEL)
         self._base_url = os.environ.get("ARK_BASE_URL", DEFAULT_BASE_URL)
 
     def animate(self, prompt: str, image: bytes, *, timeout: float = 300) -> bytes:

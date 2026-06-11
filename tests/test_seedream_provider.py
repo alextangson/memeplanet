@@ -2,7 +2,7 @@ import base64
 
 import pytest
 
-from biaoqingbao.providers.seedream import build_payload, extract_seedream_image
+from mememe.providers.seedream import build_payload, extract_seedream_image
 
 
 def test_build_payload_embeds_reference_as_data_url():

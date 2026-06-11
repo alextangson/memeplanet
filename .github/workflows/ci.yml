@@ -20,5 +20,5 @@ jobs:
       - name: Validate all packs
         run: |
           for p in packs/*.yaml; do
-            uv run biaoqingbao validate "$p"
+            uv run meme-me validate "$p"
           done

@@ -7,7 +7,7 @@ from PIL import Image
 fastapi = pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient  # noqa: E402
 
-import biaoqingbao.webapp as webapp  # noqa: E402
+import mememe.webapp as webapp  # noqa: E402
 
 
 class FakeProvider:

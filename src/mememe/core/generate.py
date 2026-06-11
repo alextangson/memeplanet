@@ -2,9 +2,9 @@
 
 from collections.abc import Callable
 
-from biaoqingbao.core.compiler import compile_meme
-from biaoqingbao.core.schema import Meme, Pack
-from biaoqingbao.providers.base import ImageProvider
+from mememe.core.compiler import compile_meme
+from mememe.core.schema import Meme, Pack
+from mememe.providers.base import ImageProvider
 
 ProgressCallback = Callable[[Meme, bytes], None]
 

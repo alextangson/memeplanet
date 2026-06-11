@@ -20,29 +20,29 @@ import io
 
 from PIL import Image
 
-from biaoqingbao.core.animate import frames_to_gif, mp4_to_wechat_gif, procedural_gif
-from biaoqingbao.core.collage import build_collage
-from biaoqingbao.core.compiler import compile_keyframe, compile_meme, compile_motion
-from biaoqingbao.core.postprocess import (
+from mememe.core.animate import frames_to_gif, mp4_to_wechat_gif, procedural_gif
+from mememe.core.collage import build_collage
+from mememe.core.compiler import compile_keyframe, compile_meme, compile_motion
+from mememe.core.postprocess import (
     maybe_remove_background,
     to_sticker_gif,
     to_sticker_png,
 )
-from biaoqingbao.core.schema import Pack, load_pack
-from biaoqingbao.providers.base import ImageProvider
+from mememe.core.schema import Pack, load_pack
+from mememe.providers.base import ImageProvider
 
 OUTPUT_ROOT = Path("out/web")
-PACKS_DIR = Path(os.environ.get("BIAOQINGBAO_PACKS_DIR", "packs"))
-DEFAULT_QR_URL = "https://github.com/REPLACE-ME/biaoqingbao"
+PACKS_DIR = Path(os.environ.get("MEMEME_PACKS_DIR", "packs"))
+DEFAULT_QR_URL = "https://github.com/REPLACE-ME/mememe"
 
 
 def _make_provider(name: str = "") -> ImageProvider:
-    name = name or os.environ.get("BIAOQINGBAO_PROVIDER", "gemini")
+    name = name or os.environ.get("MEMEME_PROVIDER", "gemini")
     if name == "seedream":
-        from biaoqingbao.providers.seedream import SeedreamProvider
+        from mememe.providers.seedream import SeedreamProvider
 
         return SeedreamProvider()
-    from biaoqingbao.providers.gemini import GeminiProvider
+    from mememe.providers.gemini import GeminiProvider
 
     return GeminiProvider()
 
@@ -57,7 +57,7 @@ def _fallback_image_provider(name: str) -> ImageProvider | None:
 
 
 def _make_video_provider():
-    from biaoqingbao.providers.seedance import SeedanceVideoProvider
+    from mememe.providers.seedance import SeedanceVideoProvider
 
     return SeedanceVideoProvider()
 
@@ -278,7 +278,7 @@ def _job_json(job: Job) -> dict:
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="biaoqingbao")
+    app = FastAPI(title="mememe")
     jobs: dict[str, Job] = _load_jobs()
 
     @app.get("/", response_class=HTMLResponse)
@@ -473,7 +473,7 @@ _INDEX_HTML = """<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>表情包工厂 · biaoqingbao</title>
+<title>表情包工厂 · mememe</title>
 <style>
   * { box-sizing: border-box; font-family: -apple-system, "PingFang SC", sans-serif; margin: 0; }
   body { background: #faf8f5; color: #1d1d1f; }
@@ -607,7 +607,7 @@ _INDEX_HTML = """<!DOCTYPE html>
     <img src="/api/lan-qr" onload="this.parentElement.classList.add('lan')" onerror="this.parentElement.style.display='none'">
   </div>
 
-  <footer>biaoqingbao · 本地运行 · Apache-2.0</footer>
+  <footer>mememe · 本地运行 · Apache-2.0</footer>
 </div>
 
 <script>

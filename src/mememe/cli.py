@@ -1,27 +1,27 @@
-"""biaoqingbao CLI — 一张自拍生成整套微信表情包."""
+"""mememe CLI — 一张自拍生成整套微信表情包."""
 
 import importlib.util
 from pathlib import Path
 
 import typer
 
-from biaoqingbao.core.collage import build_collage
-from biaoqingbao.core.generate import generate_set, regenerate
-from biaoqingbao.core.postprocess import (
+from mememe.core.collage import build_collage
+from mememe.core.generate import generate_set, regenerate
+from mememe.core.postprocess import (
     maybe_remove_background,
     to_sticker_gif,
     to_sticker_png,
 )
-from biaoqingbao.core.schema import Pack, load_pack
-from biaoqingbao.providers.base import ImageProvider
+from mememe.core.schema import Pack, load_pack
+from mememe.providers.base import ImageProvider
 
 app = typer.Typer(help=__doc__, no_args_is_help=True)
 
-DEFAULT_QR_URL = "https://github.com/REPLACE-ME/biaoqingbao"
+DEFAULT_QR_URL = "https://github.com/REPLACE-ME/mememe"
 
 
 def _make_provider() -> ImageProvider:
-    from biaoqingbao.providers.gemini import GeminiProvider
+    from mememe.providers.gemini import GeminiProvider
 
     return GeminiProvider()
 
@@ -131,7 +131,7 @@ def web(
     try:
         import uvicorn
 
-        from biaoqingbao.webapp import create_app
+        from mememe.webapp import create_app
     except ImportError:
         typer.echo("web 依赖未安装：uv sync --extra web")
         raise typer.Exit(1)

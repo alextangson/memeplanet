@@ -3,8 +3,8 @@ from pathlib import Path
 
 from PIL import Image
 
-from biaoqingbao.core.generate import generate_set, regenerate
-from biaoqingbao.core.schema import load_pack
+from mememe.core.generate import generate_set, regenerate
+from mememe.core.schema import load_pack
 
 PACKS_DIR = Path(__file__).parent.parent / "packs"
 

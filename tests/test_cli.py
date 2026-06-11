@@ -4,7 +4,7 @@ from pathlib import Path
 from PIL import Image
 from typer.testing import CliRunner
 
-import biaoqingbao.cli as cli
+import mememe.cli as cli
 
 runner = CliRunner()
 PACKS_DIR = Path(__file__).parent.parent / "packs"

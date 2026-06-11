@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from biaoqingbao.core.compiler import compile_pack
-from biaoqingbao.core.schema import load_pack
+from mememe.core.compiler import compile_pack
+from mememe.core.schema import load_pack
 
 PACKS_DIR = Path(__file__).parent.parent / "packs"
 
@@ -44,7 +44,7 @@ def test_prompt_demands_square_aspect():
 
 
 def test_caption_override_replaces_text():
-    from biaoqingbao.core.compiler import compile_meme
+    from mememe.core.compiler import compile_meme
 
     pack = load_pack(PACKS_DIR / "shechu.yaml")
     prompt = compile_meme(pack, pack.memes[0], caption_override="老板再见")
@@ -53,7 +53,7 @@ def test_caption_override_replaces_text():
 
 
 def test_compile_motion_uses_motion_or_falls_back():
-    from biaoqingbao.core.compiler import compile_motion
+    from mememe.core.compiler import compile_motion
 
     pack = load_pack(PACKS_DIR / "shechu.yaml")
     meme = pack.memes[0]
@@ -68,7 +68,7 @@ def test_compile_motion_uses_motion_or_falls_back():
 
 
 def test_compile_keyframe_is_minimal_edit_instruction():
-    from biaoqingbao.core.compiler import compile_keyframe
+    from mememe.core.compiler import compile_keyframe
 
     pack = load_pack(PACKS_DIR / "shechu.yaml")
     meme = pack.memes[0]

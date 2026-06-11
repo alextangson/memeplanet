@@ -3,7 +3,7 @@ import io
 import pytest
 from PIL import Image
 
-from biaoqingbao.core.collage import build_collage
+from mememe.core.collage import build_collage
 
 
 def _sticker(color: tuple[int, int, int]) -> bytes:

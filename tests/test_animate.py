@@ -5,7 +5,7 @@ import subprocess
 import pytest
 from PIL import Image
 
-from biaoqingbao.core.animate import mp4_to_wechat_gif
+from mememe.core.animate import mp4_to_wechat_gif
 
 pytestmark = pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="needs ffmpeg")
 
@@ -41,7 +41,7 @@ def _sticker_png() -> bytes:
 
 
 def test_procedural_shake_gif():
-    from biaoqingbao.core.animate import procedural_gif
+    from mememe.core.animate import procedural_gif
 
     gif = procedural_gif(_sticker_png(), effect="shake")
     img = Image.open(io.BytesIO(gif))
@@ -52,14 +52,14 @@ def test_procedural_shake_gif():
 
 
 def test_procedural_unknown_effect_raises():
-    from biaoqingbao.core.animate import procedural_gif
+    from mememe.core.animate import procedural_gif
 
     with pytest.raises(ValueError, match="effect"):
         procedural_gif(_sticker_png(), effect="explode")
 
 
 def test_frames_to_gif_two_frame_loop():
-    from biaoqingbao.core.animate import frames_to_gif
+    from mememe.core.animate import frames_to_gif
 
     a = Image.open(io.BytesIO(_sticker_png())).convert("RGBA")
     b = Image.new("RGBA", a.size, (0, 0, 0, 0))

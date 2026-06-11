@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from biaoqingbao.core.schema import Pack, load_pack
+from mememe.core.schema import Pack, load_pack
 
 PACKS_DIR = Path(__file__).parent.parent / "packs"
 

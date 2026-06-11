@@ -51,8 +51,8 @@ class SeedreamProvider:
         self._api_key = os.environ.get("ARK_API_KEY", "")
         if not self._api_key:
             raise RuntimeError("Seedream 需要 ARK_API_KEY 环境变量")
-        self._model = model or os.environ.get("BIAOQINGBAO_SEEDREAM_MODEL", DEFAULT_MODEL)
-        self._size = os.environ.get("BIAOQINGBAO_SEEDREAM_SIZE") or None
+        self._model = model or os.environ.get("MEMEME_SEEDREAM_MODEL", DEFAULT_MODEL)
+        self._size = os.environ.get("MEMEME_SEEDREAM_SIZE") or None
         self._base_url = os.environ.get("ARK_BASE_URL", DEFAULT_BASE_URL)
 
     def generate(self, prompt: str, reference: bytes) -> bytes:

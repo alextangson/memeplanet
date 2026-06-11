@@ -2,7 +2,7 @@ import base64
 
 import pytest
 
-from biaoqingbao.providers.seedance import (
+from mememe.providers.seedance import (
     build_video_payload,
     extract_task_id,
     extract_video_url,

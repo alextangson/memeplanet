@@ -4,7 +4,7 @@ Consistency strategy: every prompt carries the identical style block and the
 same identity instruction, paired with the same reference photo at call time.
 """
 
-from biaoqingbao.core.schema import Meme, Pack
+from mememe.core.schema import Meme, Pack
 
 _PROMPT_TEMPLATE = """\
 基于参考照片中的人物，生成一张微信表情包贴纸。
