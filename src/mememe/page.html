@@ -3,147 +3,170 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>把照片变成微信表情包｜meme-me 表情包工厂</title>
-<meta name="description" content="上传一张自拍、宠物照或合照，AI 生成一整套人设一致的微信表情包：16 个梗、静态加动图、直接满足微信导入规格。开源免费，照片不落盘。">
-<meta property="og:title" content="meme-me 表情包工厂：一张照片，一整套微信表情包">
-<meta property="og:description" content="16 个梗共享同一个你，静态 + 动图，支持宠物与情侣合照，AI 策划对话定制专属剧本。">
+<title>表情星球｜用自己的照片做一整套专属微信表情包</title>
+<meta name="description" content="上传一张自拍、宠物照或合照，AI 帮你生成一整套人设一致的专属微信表情包——16 个梗、静态加动图，可直接导入微信、上架微信表情商店。支持自拍、情侣、宠物，AI 对话定制专属剧本。开源免费，照片不留存。">
+<meta name="keywords" content="微信表情包制作,用照片做表情包,AI表情包生成,表情包定制,情侣表情包,宠物表情包,专属表情包,微信表情上架">
+<link rel="canonical" href="https://mememe.app/">
 <meta property="og:type" content="website">
+<meta property="og:title" content="表情星球：用你的照片，做一整套专属微信表情包">
+<meta property="og:description" content="自拍 · 宠物 · 情侣合照都行，AI 生成 16 个梗的专属表情包，静态加动图，直接进微信。">
 <meta property="og:image" content="/api/pack-preview/shechu">
-<meta name="theme-color" content="#FAF7F2">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#FFD23D">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Cellipse%20cx='16'%20cy='16'%20rx='15'%20ry='5.5'%20fill='none'%20stroke='%231A1505'%20stroke-width='2'%20transform='rotate(-20%2016%2016)'/%3E%3Ccircle%20cx='16'%20cy='16'%20r='10.5'%20fill='%23F0531E'/%3E%3Ccircle%20cx='12'%20cy='15'%20r='1.7'%20fill='%231A1505'/%3E%3Ccircle%20cx='20'%20cy='15'%20r='1.7'%20fill='%231A1505'/%3E%3Cpath%20d='M12%2019%20q4%203%208%200'%20stroke='%231A1505'%20stroke-width='2'%20fill='none'%20stroke-linecap='round'/%3E%3C/svg%3E">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@graph":[
+{"@type":"WebApplication","name":"表情星球 meme-me","applicationCategory":"DesignApplication","operatingSystem":"Web","description":"上传照片，AI 生成一整套人设一致的专属微信表情包，支持自拍、宠物、情侣，静态加动图，可上架微信表情商店。","offers":{"@type":"Offer","price":"0","priceCurrency":"CNY"}},
+{"@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"怎么用自己的照片做微信表情包？","acceptedAnswer":{"@type":"Answer","text":"上传一张正脸自拍、宠物照或合照，选一套梗剧本，AI 自动生成 16 个表情，长按保存就能导入微信。"}},
+{"@type":"Question","name":"做表情包要钱吗？","acceptedAnswer":{"@type":"Answer","text":"先免费生成 8 张，满意再解锁全套 16 张。项目开源免费。"}},
+{"@type":"Question","name":"可以做宠物或情侣表情包吗？","acceptedAnswer":{"@type":"Answer","text":"可以。上传宠物照做宠物表情包，上传两人合照做情侣表情包，AI 会保持每个角色一致。"}},
+{"@type":"Question","name":"生成的表情包能上架微信表情商店吗？","acceptedAnswer":{"@type":"Answer","text":"能。生成全套后一键导出上架素材包，按指南提交到微信表情开放平台即可。"}}
+]}]}
+</script>
 <style>
   :root {
-    --bg: #FAF7F2; --card: #FFFFFF; --ink: #211A12; --ink-2: #6E5F4E;
-    --ink-3: #A99882; --line: #ECE3D6; --accent: #C9551E; --accent-h: #B34715;
-    --ok: #2A9D5C; --r: 14px; --shadow: 0 1px 2px rgba(60,40,20,.05), 0 4px 16px rgba(60,40,20,.04);
+    --bg: #FFF8EA; --hero: #FFD23D; --card: #FFFFFF;
+    --ink: #1A1505; --ink-2: #6B5A2E; --ink-3: #A8966A; --line: #F1E7CC;
+    --accent: #F0531E; --accent-h: #D8420F; --ok: #2A9D5C;
+    --pink: #FF7FA8; --mint: #2FC295; --sky: #4FB0F0; --grape: #9B7FE0;
+    --r: 16px; --r-lg: 22px;
   }
   * { box-sizing: border-box; margin: 0; font-family: -apple-system, "PingFang SC", "Noto Sans SC", sans-serif; }
   body { background: var(--bg); color: var(--ink); -webkit-font-smoothing: antialiased; }
-  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 72px; }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 0 16px 80px; }
+  a { color: inherit; }
 
-  header.site { display: flex; align-items: baseline; justify-content: space-between; padding: 18px 2px 0; }
-  .brand { font-size: 17px; font-weight: 800; letter-spacing: .5px; }
-  .brand em { font-style: normal; color: var(--accent); }
-  header.site a { font-size: 13px; color: var(--ink-3); text-decoration: none; }
-  header.site a:hover { color: var(--accent); }
+  nav.top { display: flex; align-items: center; gap: 16px; padding: 14px 2px 0; font-size: 14px; }
+  .logo { display: flex; align-items: center; gap: 8px; font-weight: 900; font-size: 18px; letter-spacing: .5px; text-decoration: none; }
+  .logo svg { width: 30px; height: 30px; flex: none; }
+  nav.top .sp { flex: 1; }
+  nav.top a.nl { color: var(--ink-2); text-decoration: none; font-weight: 600; }
+  nav.top a.nl:hover { color: var(--accent); }
+  @media (max-width: 480px) { nav.top a.nl.hideS { display: none; } }
 
-  .hero { text-align: center; padding: 40px 8px 30px; }
-  .hero h1 { font-size: 30px; line-height: 1.3; letter-spacing: .5px; }
-  .hero h1 em { font-style: normal; color: var(--accent); }
-  .hero .sub { color: var(--ink-2); font-size: 15px; margin-top: 10px; line-height: 1.7; }
-  .heroband { display: flex; gap: 10px; justify-content: center; margin-top: 22px; }
-  .heroband img { width: 96px; height: 96px; border-radius: 16px; border: 1px solid var(--line);
-                  background: var(--card); object-fit: contain; box-shadow: var(--shadow); }
-  .heroband img:nth-child(even) { transform: rotate(2.5deg); }
-  .heroband img:nth-child(odd) { transform: rotate(-2deg); }
+  .hero { margin: 16px 0 18px; background: var(--hero); border: 3px solid var(--ink); border-radius: var(--r-lg);
+          padding: 30px 22px 26px; position: relative; overflow: hidden; }
+  .hero h1 { font-size: 31px; line-height: 1.28; font-weight: 900; letter-spacing: .5px; max-width: 18em; }
+  .hero h1 em { font-style: normal; color: var(--accent); -webkit-text-stroke: 0; }
+  .hero .sub { color: #5C4A12; font-size: 15.5px; font-weight: 600; margin-top: 12px; line-height: 1.7; max-width: 22em; }
+  .heroband { display: flex; gap: 10px; margin-top: 20px; }
+  .heroband img { width: 78px; height: 78px; border-radius: 14px; border: 2.5px solid var(--ink);
+                  background: #fff; object-fit: contain; }
+  .heroband img:nth-child(2) { transform: rotate(4deg); }
+  .heroband img:nth-child(3) { transform: rotate(-3deg); }
+  .heroband img:nth-child(4) { transform: rotate(5deg); }
+  .spark { position: absolute; font-weight: 900; color: var(--accent); pointer-events: none; }
 
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r);
-          padding: 18px; margin-top: 16px; box-shadow: var(--shadow); }
-  .label { font-size: 12px; font-weight: 700; color: var(--ink-3); letter-spacing: 1.5px; margin-bottom: 12px; }
-  .label b { color: var(--accent); margin-right: 6px; }
+  .card { background: var(--card); border: 2px solid var(--ink); border-radius: var(--r);
+          padding: 18px; margin-top: 14px; }
+  .card.soft { border: 1.5px solid var(--line); }
+  .label { font-size: 12px; font-weight: 800; color: var(--ink-3); letter-spacing: 1.5px; margin-bottom: 12px;
+           display: flex; align-items: center; gap: 8px; }
+  .label .n { background: var(--ink); color: var(--hero); width: 22px; height: 22px; border-radius: 7px;
+              display: inline-flex; align-items: center; justify-content: center; font-size: 12px; }
 
   .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-         border: 1.5px solid var(--line); background: var(--card); color: var(--ink);
-         border-radius: 12px; padding: 11px 16px; font-size: 14px; font-weight: 600;
-         cursor: pointer; transition: .15s; }
-  .btn:hover { border-color: var(--accent); color: var(--accent); }
-  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .btn.primary:hover { background: var(--accent-h); color: #fff; }
-  .btn.big { width: 100%; padding: 15px; font-size: 16px; border-radius: 999px; }
-  .btn:disabled { opacity: .45; cursor: not-allowed; pointer-events: none; }
-  .btn svg, .ibtn svg { width: 17px; height: 17px; stroke: currentColor; stroke-width: 2;
-        fill: none; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+         border: 2px solid var(--ink); background: var(--card); color: var(--ink);
+         border-radius: 12px; padding: 11px 16px; font-size: 14px; font-weight: 700; cursor: pointer;
+         transition: transform .12s, background .15s; }
+  .btn:hover { transform: translateY(-1px); }
+  .btn:active { transform: translateY(1px); }
+  .btn.primary { background: var(--accent); border-color: var(--ink); color: #fff; }
+  .btn.primary:hover { background: var(--accent-h); }
+  .btn.big { width: 100%; padding: 16px; font-size: 17px; font-weight: 900; border-radius: 14px;
+             box-shadow: 0 4px 0 var(--ink); }
+  .btn.big:hover { transform: translateY(-1px); box-shadow: 0 5px 0 var(--ink); }
+  .btn.big:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; box-shadow: 0 4px 0 var(--ink); pointer-events: none; }
+  .btn svg, .ibtn svg { width: 17px; height: 17px; stroke: currentColor; stroke-width: 2.2; fill: none; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 
-  .drop { border: 2px dashed #DCC9B6; border-radius: 12px; padding: 28px 16px; text-align: center;
-          cursor: pointer; color: var(--ink-2); transition: .15s; font-size: 14px; }
-  .drop:hover { border-color: var(--accent); }
+  .drop { border: 2.5px dashed #E0BE6B; border-radius: 14px; padding: 28px 16px; text-align: center;
+          cursor: pointer; color: var(--ink-2); transition: .15s; font-size: 14.5px; font-weight: 600; background: #FFFDF6; }
+  .drop:hover { border-color: var(--accent); color: var(--accent); }
   .drop.has { border-style: solid; border-color: var(--ok); color: var(--ok); }
-  .drop img { max-height: 110px; border-radius: 10px; display: block; margin: 0 auto 10px; }
+  .drop img { max-height: 112px; border-radius: 12px; display: block; margin: 0 auto 10px; border: 2px solid var(--ink); }
   .privacy { font-size: 12px; color: var(--ink-3); text-align: center; margin-top: 10px; }
 
-  .search { width: 100%; border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 12px;
-            font-size: 14px; margin-bottom: 12px; background: #FFFDFA; outline: none; }
+  .search { width: 100%; border: 2px solid var(--line); border-radius: 11px; padding: 10px 12px;
+            font-size: 14px; margin-bottom: 12px; background: #FFFDF6; outline: none; }
   .search:focus { border-color: var(--accent); }
   .packgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
   @media (max-width: 560px) { .packgrid { grid-template-columns: repeat(2, 1fr); } }
-  .pcard { border: 2px solid var(--line); border-radius: 12px; padding: 10px; cursor: pointer;
-           transition: .15s; background: #FFFDFA; }
-  .pcard:hover { border-color: var(--accent); }
-  .pcard.sel { border-color: var(--accent); background: #FFF3EA; }
-  .pcard img, .pph { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 9px; background: #F6F2EC; }
+  .pcard { border: 2px solid var(--line); border-radius: 13px; padding: 9px; cursor: pointer; transition: .12s; background: #FFFDF6; }
+  .pcard:hover { transform: translateY(-2px) rotate(-1deg); border-color: var(--ink); }
+  .pcard.sel { border-color: var(--accent); background: #FFF1E8; }
+  .pcard img, .pph { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 10px; background: #F3ECD8; }
   .pph { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: var(--ink-3); }
-  .pph svg { width: 28px; height: 28px; stroke: var(--ink-3); stroke-width: 1.6; fill: none; }
+  .pph svg { width: 26px; height: 26px; stroke: var(--ink-3); stroke-width: 1.6; fill: none; }
   .pph small { font-size: 11px; }
-  .pname { font-size: 14px; font-weight: 700; margin-top: 8px; display: flex; align-items: baseline; gap: 6px; }
-  .pcount { font-size: 10px; color: var(--ink-3); font-weight: 400; margin-left: auto; white-space: nowrap; }
-  .cbadge { font-size: 10px; font-weight: 700; background: var(--ok); color: #fff; border-radius: 6px; padding: 2px 6px; }
+  .pname { font-size: 14px; font-weight: 800; margin-top: 8px; display: flex; align-items: baseline; gap: 5px; }
+  .pcount { font-size: 10px; color: var(--ink-3); font-weight: 500; margin-left: auto; white-space: nowrap; }
+  .cbadge { font-size: 10px; font-weight: 800; background: var(--ok); color: #fff; border-radius: 6px; padding: 2px 6px; }
   .pdesc { font-size: 11px; color: var(--ink-3); margin-top: 4px; line-height: 1.5; }
   .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
-  .chips span { font-size: 10px; background: #F3E9DE; color: #8A6A52; border-radius: 6px; padding: 2px 6px; }
+  .chips span { font-size: 10px; background: #FCEBD2; color: #9A6A1E; border-radius: 6px; padding: 2px 6px; font-weight: 600; }
 
   .chatbox { max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 2px; }
   .bub { max-width: 86%; padding: 9px 12px; border-radius: 14px; font-size: 14px; line-height: 1.65; white-space: pre-wrap; }
-  .bub.ai { background: #F6F2EC; align-self: flex-start; border-bottom-left-radius: 4px; }
+  .bub.ai { background: #FCEBD2; align-self: flex-start; border-bottom-left-radius: 4px; }
   .bub.me { background: var(--accent); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
   .bub.busy { color: var(--ink-3); animation: blink 1.2s ease infinite; }
   @keyframes blink { 50% { opacity: .45; } }
 
   .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .opt { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--ink-3); font-weight: 600; flex: 1; min-width: 100px; }
-  .opt select { border: 1.5px solid var(--line); border-radius: 9px; padding: 9px 8px; font-size: 14px;
-                background: #FFFDFA; color: var(--ink); outline: none; }
+  .opt { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--ink-3); font-weight: 700; flex: 1; min-width: 100px; }
+  .opt select { border: 2px solid var(--line); border-radius: 10px; padding: 9px 8px; font-size: 14px; background: #FFFDF6; color: var(--ink); outline: none; font-weight: 600; }
   .opt select:focus { border-color: var(--accent); }
 
   .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
   @media (max-width: 430px) { .grid { grid-template-columns: repeat(3, 1fr); } }
-  .cell { aspect-ratio: 1; border: 1px solid var(--line); border-radius: 11px; position: relative;
-          display: flex; align-items: center; justify-content: center; overflow: hidden; background: #F6F2EC; }
-  .cell img { width: 100%; height: 100%; object-fit: contain; animation: pop .3s ease; }
-  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-  .cap { position: absolute; bottom: 5px; left: 0; right: 0; text-align: center; font-size: 11px; color: var(--ink-3); pointer-events: none; }
-  .spin { width: 22px; height: 22px; border: 3px solid #E8DDD0; border-top-color: var(--accent); border-radius: 50%; animation: r 1s linear infinite; }
+  .cell { aspect-ratio: 1; border: 2px solid var(--line); border-radius: 12px; position: relative;
+          display: flex; align-items: center; justify-content: center; overflow: hidden; background: #F3ECD8; }
+  .cell img { width: 100%; height: 100%; object-fit: contain; animation: pop .3s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes pop { from { transform: scale(.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .cap { position: absolute; bottom: 5px; left: 0; right: 0; text-align: center; font-size: 11px; color: var(--ink-3); pointer-events: none; font-weight: 600; }
+  .spin { width: 22px; height: 22px; border: 3px solid #E9DDBE; border-top-color: var(--accent); border-radius: 50%; animation: r 1s linear infinite; }
   @keyframes r { to { transform: rotate(360deg); } }
-  .ibtn { position: absolute; width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--line);
-          background: rgba(255,255,255,.95); display: flex; align-items: center; justify-content: center;
-          cursor: pointer; color: var(--ink-2); opacity: 0; transition: .15s; }
-  .ibtn:hover { color: var(--accent); border-color: var(--accent); }
+  .ibtn { position: absolute; width: 28px; height: 28px; border-radius: 9px; border: 1.5px solid var(--ink);
+          background: rgba(255,255,255,.96); display: flex; align-items: center; justify-content: center;
+          cursor: pointer; color: var(--ink); opacity: 0; transition: .15s; }
+  .ibtn:hover { background: var(--accent); color: #fff; }
   .ibtn.tl { top: 5px; left: 5px; } .ibtn.tr { top: 5px; right: 5px; } .ibtn.br { bottom: 5px; right: 5px; }
   .cell:hover .ibtn { opacity: 1; }
   @media (hover: none) { .ibtn { opacity: 1; } }
-  .badge { position: absolute; top: 5px; right: 5px; font-size: 10px; font-weight: 800;
-           background: var(--accent); color: #fff; border-radius: 6px; padding: 3px 6px; pointer-events: none; }
+  .badge { position: absolute; top: 5px; right: 5px; font-size: 10px; font-weight: 900; background: var(--accent); color: #fff; border-radius: 6px; padding: 3px 6px; pointer-events: none; }
   .badge.busy { background: var(--ink-2); animation: blink 1.2s ease infinite; }
-  .cell.locked { background: repeating-linear-gradient(45deg, #F3EEE6, #F3EEE6 6px, #FAF7F2 6px, #FAF7F2 12px); }
-  .cell.locked svg { width: 20px; height: 20px; stroke: var(--ink-3); stroke-width: 2; fill: none; }
-  .menu { position: absolute; inset: auto 4px 4px 4px; background: rgba(255,255,255,.98);
-          border: 1px solid var(--line); border-radius: 10px; z-index: 5; display: flex; flex-direction: column; overflow: hidden; }
-  .menu button { display: flex; align-items: center; gap: 7px; border: 0; background: none; padding: 8px 9px;
-                 font-size: 11.5px; cursor: pointer; text-align: left; color: var(--ink); }
-  .menu button:hover { background: #FFF3EA; }
-  .menu button + button { border-top: 1px solid #F3E9DE; }
+  .menu { position: absolute; inset: auto 4px 4px 4px; background: rgba(255,255,255,.99);
+          border: 2px solid var(--ink); border-radius: 11px; z-index: 5; display: flex; flex-direction: column; overflow: hidden; }
+  .menu button { display: flex; align-items: center; gap: 7px; border: 0; background: none; padding: 8px 9px; font-size: 11.5px; cursor: pointer; text-align: left; color: var(--ink); font-weight: 600; }
+  .menu button:hover { background: #FFF1E8; }
+  .menu button + button { border-top: 1px solid var(--line); }
   .menu svg { width: 13px; height: 13px; stroke: var(--ink-2); stroke-width: 2; fill: none; }
-  .menu small { color: var(--ink-3); margin-left: auto; }
+  .menu small { color: var(--ink-3); margin-left: auto; font-weight: 500; }
 
-  .unlock { margin-top: 12px; padding: 14px; border: 1.5px dashed #DCC9B6; border-radius: 12px;
-            display: flex; align-items: center; gap: 12px; }
-  .unlock .txt { flex: 1; font-size: 13px; color: var(--ink-2); line-height: 1.6; }
-  .unlock .txt b { color: var(--ink); }
-
+  .unlock { margin-top: 14px; padding: 16px; border: 2.5px dashed #E0BE6B; border-radius: 14px;
+            display: flex; align-items: center; gap: 12px; background: #FFFDF6; }
+  .unlock .txt { flex: 1; font-size: 13.5px; color: var(--ink-2); line-height: 1.6; }
+  .unlock .txt b { color: var(--ink); font-size: 15px; }
   .actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
-  .actions .btn { flex: 1; min-width: 150px; }
+  .actions .btn { flex: 1; min-width: 150px; text-decoration: none; }
 
-  .collage img { width: 100%; border-radius: 12px; border: 1px solid var(--line); }
+  .collage img { width: 100%; border-radius: 13px; border: 2px solid var(--ink); }
   .hint { font-size: 13px; color: var(--ink-3); line-height: 1.8; margin-top: 10px; }
 
-  .hist { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; cursor: grab;
-          user-select: none; -webkit-user-select: none; }
+  .hist { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; cursor: grab; user-select: none; -webkit-user-select: none; }
   .hist:active { cursor: grabbing; }
-  .hist img { -webkit-user-drag: none; width: 112px; height: 112px; object-fit: cover;
-              border-radius: 10px; border: 1px solid var(--line); background: #F6F2EC; }
-  .hitem { min-width: 112px; max-width: 112px; cursor: pointer; text-align: center; font-size: 12px; color: var(--ink-2); }
-  .hitem small { display: block; color: var(--ink-3); font-size: 10px; margin-top: 2px; }
+  .hist img { -webkit-user-drag: none; width: 110px; height: 110px; object-fit: cover; border-radius: 11px; border: 2px solid var(--line); background: #F3ECD8; }
+  .hitem { min-width: 110px; max-width: 110px; cursor: pointer; text-align: center; font-size: 12px; color: var(--ink-2); font-weight: 600; }
+  .hitem small { display: block; color: var(--ink-3); font-size: 10px; margin-top: 2px; font-weight: 500; }
 
+  h2.sec { font-size: 17px; font-weight: 900; margin: 0 0 4px; }
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 6px; }
+  .step { text-align: center; font-size: 12.5px; color: var(--ink-2); font-weight: 600; line-height: 1.5; }
+  .step b { display: block; font-size: 26px; color: var(--accent); font-weight: 900; }
   .faq { font-size: 13.5px; color: var(--ink-2); line-height: 1.9; }
-  .faq dt { font-weight: 700; color: var(--ink); margin-top: 12px; }
+  .faq dt { font-weight: 800; color: var(--ink); margin-top: 12px; }
   .faq dt:first-child { margin-top: 0; }
 
   .qrbox { display: none; text-align: center; }
@@ -154,93 +177,104 @@
   footer.site a { color: var(--ink-2); text-decoration: none; }
   footer.site a:hover { color: var(--accent); }
 
-  dialog#ask { border: 1px solid var(--line); border-radius: var(--r); padding: 20px; width: min(92vw, 380px);
-               box-shadow: 0 12px 40px rgba(60,40,20,.18); }
-  dialog#ask::backdrop { background: rgba(33,26,18,.35); }
+  dialog#ask { border: 2px solid var(--ink); border-radius: var(--r); padding: 20px; width: min(92vw, 380px); }
+  dialog#ask::backdrop { background: rgba(26,21,5,.4); }
   dialog#ask h3 { font-size: 15px; margin-bottom: 12px; }
-  dialog#ask input { width: 100%; border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 12px;
-                     font-size: 14px; outline: none; }
+  dialog#ask input { width: 100%; border: 2px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 14px; outline: none; }
   dialog#ask input:focus { border-color: var(--accent); }
   dialog#ask .row { margin-top: 14px; justify-content: flex-end; }
 
-  .toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); background: var(--ink);
-           color: #fff; font-size: 13.5px; padding: 11px 18px; border-radius: 999px; z-index: 50;
-           opacity: 0; transition: .25s; pointer-events: none; max-width: 86vw; }
+  .toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); background: var(--ink); color: #fff;
+           font-size: 13.5px; padding: 11px 18px; border-radius: 999px; z-index: 50; opacity: 0; transition: .25s; pointer-events: none; max-width: 86vw; }
   .toast.show { opacity: 1; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header class="site">
-    <div class="brand">meme<em>·</em>me <span style="font-weight:400;color:var(--ink-3);font-size:13px">表情包工厂</span></div>
-    <a href="https://github.com/alextangson/meme-me" target="_blank" rel="noopener">GitHub ↗</a>
-  </header>
+  <nav class="top">
+    <a class="logo" href="/" aria-label="表情星球 首页">
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <ellipse cx="16" cy="16" rx="15" ry="5.5" fill="none" stroke="#1A1505" stroke-width="2" transform="rotate(-20 16 16)"/>
+        <circle cx="16" cy="16" r="10.5" fill="#F0531E"/>
+        <circle cx="12" cy="15" r="1.7" fill="#1A1505"/><circle cx="20" cy="15" r="1.7" fill="#1A1505"/>
+        <path d="M12 19 q4 3 8 0" stroke="#1A1505" stroke-width="2" fill="none" stroke-linecap="round"/>
+      </svg>
+      表情星球
+    </a>
+    <span class="sp"></span>
+    <a class="nl hideS" href="#custom">AI定制</a>
+    <a class="nl hideS" href="https://github.com/alextangson/meme-me/blob/main/docs/wechat-platform.md" target="_blank" rel="noopener">上架教程</a>
+    <a class="nl" href="https://github.com/alextangson/meme-me" target="_blank" rel="noopener">GitHub</a>
+  </nav>
 
-  <section class="hero">
-    <h1>一张照片，<br>变成<em>一整套</em>微信表情包</h1>
-    <p class="sub">自拍、主子萌照、你俩的合照都行——16 个梗共享同一个你，<br>静态加动图，长按就能进微信。</p>
-    <div class="heroband" aria-hidden="true">
-      <img src="/api/pack-preview/shechu" alt="">
-      <img src="/api/pack-preview/maomi" alt="">
-      <img src="/api/pack-preview/qinglv" alt="">
-      <img src="/api/pack-preview/hajimi" alt="">
+  <header class="hero">
+    <span class="spark" style="top:18px;right:26px;font-size:26px;transform:rotate(12deg)">✦</span>
+    <span class="spark" style="bottom:96px;right:60px;font-size:18px;transform:rotate(-10deg)">✦</span>
+    <h1>用你的照片，<br>做一整套<em>专属</em>微信表情包</h1>
+    <p class="sub">自拍、你家主子、你俩的合照都行——AI 把你变成一个可爱的小形象，16 个梗一次出齐，静态加动图，长按就进微信。</p>
+    <div class="heroband" aria-hidden="false">
+      <img src="/api/pack-preview/shechu" loading="lazy" alt="社畜表情包示例：用自拍做的微信表情">
+      <img src="/api/pack-preview/maomi" loading="lazy" alt="宠物表情包示例：猫主子微信表情">
+      <img src="/api/pack-preview/qinglv" loading="lazy" alt="情侣表情包示例：合照做的微信表情">
+      <img src="/api/pack-preview/hajimi" loading="lazy" alt="哈基米表情包示例">
     </div>
-  </section>
+  </header>
 
   <main>
   <section aria-label="制作流程">
   <div class="card">
-    <div class="label"><b>01</b>上传照片</div>
-    <div class="drop" id="drop" role="button" tabindex="0">点击选择照片 · 自拍 / 宠物 / 合照</div>
+    <div class="label"><span class="n">1</span>上传照片 · 自拍 / 宠物 / 合照</div>
+    <div class="drop" id="drop" role="button" tabindex="0">点击选择照片，做你的专属小形象</div>
     <input type="file" id="file" accept="image/*" hidden>
-    <p class="privacy">照片只存在内存里，生成完即弃，服务停止即消失</p>
+    <p class="privacy">照片只存在内存里，生成完即弃，不写入磁盘、不上传留存</p>
   </div>
 
   <div class="card">
-    <div class="label"><b>02</b>选梗剧本</div>
-    <input class="search" id="psearch" type="search" placeholder="搜剧本或梗：摸鱼 / 拿来吧你 / 求过…">
+    <div class="label"><span class="n">2</span>选一套梗剧本</div>
+    <input class="search" id="psearch" type="search" placeholder="搜剧本或梗：摸鱼 / 拿来吧你 / 想你了…" aria-label="搜索梗剧本">
     <div class="packgrid" id="packs"></div>
   </div>
 
-  <div class="card">
-    <div class="label"><b>02+</b>没有合适的？和 AI 策划聊一套专属的（个人 · 情侣 · 品牌 IP）</div>
+  <div class="card" id="custom">
+    <div class="label"><span class="n">+</span>没有合适的？让 AI 策划聊一套专属的</div>
+    <h2 class="sec" style="font-size:15px;margin-bottom:8px">个人 · 情侣 · 宠物 · 品牌 IP 都能定制</h2>
     <div class="chatbox" id="chatbox">
       <div class="bub ai">嗨！想定制什么样的表情包？说说给谁用、什么场合～</div>
     </div>
     <div class="row" style="margin-top:10px">
-      <input class="search" id="agentInput" style="margin:0;flex:1" placeholder="比如：给我和对象的互怼表情包…">
+      <input class="search" id="agentInput" style="margin:0;flex:1" placeholder="比如：给我和对象的日常互动表情…" aria-label="描述定制需求">
       <button class="btn" id="agentSend" aria-label="发送"><svg viewBox="0 0 24 24"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4Z"/></svg></button>
       <button class="btn primary" id="agentDraft">生成剧本</button>
     </div>
   </div>
 
   <div class="card">
-    <div class="label"><b>03</b>画风与生成</div>
+    <div class="label"><span class="n">3</span>挑画风，开始生成</div>
     <div class="row" style="margin-bottom:14px">
       <label class="opt">画风
-        <select id="styleSel"><option value="">经典贴纸（默认）</option></select>
+        <select id="styleSel" aria-label="选择画风"><option value="">经典贴纸（默认）</option></select>
       </label>
-      <label class="opt">文字样式
-        <select id="capSel"><option value="">手写体（默认）</option></select>
+      <label class="opt">文字
+        <select id="capSel" aria-label="选择文字样式"><option value="">手写体（默认）</option></select>
       </label>
       <label class="opt">模型
-        <select id="prov">
+        <select id="prov" aria-label="选择生成模型">
           <option value="gemini">Gemini（中转）</option>
           <option value="seedream">即梦 Seedream</option>
         </select>
       </label>
     </div>
-    <button class="btn primary big" id="go" disabled>先免费生成 8 张</button>
-    <p class="privacy" id="goHint">无需注册 · 约 90 秒逐张揭晓 · 满意再出全套</p>
+    <button class="btn primary big" id="go" disabled>做我的专属表情包</button>
+    <p class="privacy" id="goHint">先免费出 8 张 · 约 90 秒逐张揭晓 · 满意再解锁全套</p>
   </div>
   </section>
 
   <section aria-label="生成结果">
   <div class="card" id="resultCard" style="display:none">
-    <div class="label"><b>04</b>逐张揭晓</div>
+    <div class="label"><span class="n">4</span>逐张揭晓</div>
     <div class="grid" id="grid"></div>
     <div class="unlock" id="unlockZone" style="display:none">
-      <div class="txt"><b>还有 8 个隐藏梗</b><br>解锁全套 16 张，集齐整套人设</div>
+      <div class="txt"><b>还有 8 个隐藏梗 🔓</b><br>解锁全套 16 张，集齐你的专属人设</div>
       <button class="btn primary" id="unlockBtn">解锁全套</button>
     </div>
     <p class="hint">把鼠标移到任意一张上：换一张（可改文案）· 让它动起来（可指定动作）<br>
@@ -256,31 +290,44 @@
   </div>
 
   <div class="card collage" id="collageCard" style="display:none">
-    <div class="label"><b>05</b>合集晒图卡 · 发朋友圈用这张</div>
-    <img id="collageImg" alt="表情包合集晒图卡">
+    <div class="label"><span class="n">5</span>合集晒图卡 · 发朋友圈用这张</div>
+    <img id="collageImg" alt="表情包合集晒图卡，带二维码">
   </div>
   </section>
 
-  <div class="card" id="histCard" style="display:none">
+  <div class="card soft" id="histCard" style="display:none">
     <div class="label">历史生成 · 点击查看</div>
     <div class="hist" id="hist"></div>
   </div>
 
-  <div class="card">
-    <div class="label">常见问题</div>
+  <section aria-label="怎么用照片做微信表情包">
+  <div class="card soft">
+    <h2 class="sec">三步，做出你的专属微信表情包</h2>
+    <div class="steps">
+      <div class="step"><b>1</b>上传一张<br>自拍 / 宠物 / 合照</div>
+      <div class="step"><b>2</b>选梗剧本<br>或 AI 对话定制</div>
+      <div class="step"><b>3</b>逐张生成<br>长按导入微信</div>
+    </div>
+  </div>
+  </section>
+
+  <div class="card soft">
+    <h2 class="sec" style="margin-bottom:10px">常见问题</h2>
     <dl class="faq">
+      <dt>怎么用自己的照片做微信表情包？</dt>
+      <dd>上传一张正脸自拍（宠物照、合照也行），选一套梗剧本，AI 自动生成 16 个人设一致的表情，长按保存就能导入微信。</dd>
       <dt>我的照片安全吗？</dt>
-      <dd>照片只在生成期间存在内存里，从不写入磁盘；历史记录只保留生成结果。生成走你配置的模型服务（Gemini / 即梦）。</dd>
-      <dt>怎么导入微信？</dt>
-      <dd>手机打开本页（桌面端扫下方二维码），长按图片保存，微信里发给自己，再长按「添加到表情」。</dd>
-      <dt>能上架微信表情商店吗？</dt>
-      <dd>能。生成全套后点「导出上架素材包」，规格齐全，照 <a href="https://github.com/alextangson/meme-me/blob/main/docs/wechat-platform.md" target="_blank" rel="noopener">上架指南</a> 提交即可。</dd>
-      <dt>品牌 / IP 想批量定制？</dt>
-      <dd>用上面的 AI 策划聊出专属剧本就是起点；商用授权、高分辨率源文件与代上架，<a href="https://github.com/alextangson/meme-me/issues" target="_blank" rel="noopener">来 GitHub 聊</a>。</dd>
+      <dd>照片只在生成期间存在内存里，从不写入磁盘；历史记录只保留生成结果，不留原图。生成走你配置的模型服务。</dd>
+      <dt>可以做宠物 / 情侣表情包吗？</dt>
+      <dd>可以。上传宠物照做宠物表情包，上传两人合照做情侣表情包，AI 会保持每个角色一致。</dd>
+      <dt>生成的表情包能上架微信表情商店吗？</dt>
+      <dd>能。生成全套后点「导出上架素材包」，规格齐全，照 <a href="https://github.com/alextangson/meme-me/blob/main/docs/wechat-platform.md" target="_blank" rel="noopener">上架指南</a> 提交到微信表情开放平台即可。</dd>
+      <dt>品牌 / IP 想批量定制专属表情？</dt>
+      <dd>用上面的 AI 策划聊出专属剧本就是起点；商用授权、高清源文件与代上架，<a href="https://github.com/alextangson/meme-me/issues" target="_blank" rel="noopener">来 GitHub 聊</a>。</dd>
     </dl>
   </div>
 
-  <div class="card qrbox" id="qrbox">
+  <div class="card soft qrbox" id="qrbox">
     <div class="label">手机扫码打开本页 · 长按直接保存</div>
     <img src="/api/lan-qr" alt="局域网访问二维码" onload="this.parentElement.classList.add('lan')" onerror="this.parentElement.style.display='none'">
   </div>
@@ -289,7 +336,7 @@
   <footer class="site">
     <a href="https://github.com/alextangson/meme-me" target="_blank" rel="noopener">开源 GitHub</a> ·
     <a href="https://github.com/alextangson/meme-me/blob/main/docs/wechat-platform.md" target="_blank" rel="noopener">上架指南</a> ·
-    Apache-2.0<br>本地运行 · 你的照片不出这台电脑（生成调用除外）
+    Apache-2.0<br>表情星球 meme-me · 本地运行，你的照片不出这台电脑（生成调用除外）
   </footer>
 </div>
 
