@@ -14,6 +14,7 @@ rsync -avz \
   --exclude 'out' \
   --exclude '.venv' \
   --exclude '__pycache__' \
+  --exclude '.pytest_cache' \
   --exclude 'packs/custom' \
   --exclude '.env' \
   --exclude '.DS_Store' \
