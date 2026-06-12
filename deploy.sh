@@ -15,6 +15,7 @@ rsync -avz \
   --exclude '.venv' \
   --exclude '__pycache__' \
   --exclude 'packs/custom' \
+  --exclude '.env' \
   --exclude '.DS_Store' \
   ./ memeplanet-vds:/opt/memeplanet/
 
