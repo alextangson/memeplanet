@@ -7,3 +7,11 @@ out/
 *.egg-info/
 .env
 packs/custom/
+
+# 内部/商业文档：只存私有仓库 memeplanet-private + 本地，永不进公开仓库
+docs/DESIGN.md
+docs/BACKLOG.md
+docs/launch.md
+docs/plans/
+docs/specs/
+experiments/HANDOFF-2026-06-11.md
