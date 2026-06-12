@@ -687,6 +687,36 @@ def test_load_jobs_clears_stuck_anim_status(client, tmp_path):
     assert job["images"][0]["anim_status"] == "error"
 
 
+def test_load_jobs_persists_reset_to_disk(client, tmp_path):
+    # 重置必须回写磁盘——否则巡检/admin 读盘永远误报僵尸 running
+    import json as _json
+
+    job_id = _animated_job(client)
+    p = tmp_path / job_id / "job.json"
+    meta = _json.loads(p.read_text())
+    meta["status"] = "running"
+    meta["images"][0]["anim_status"] = "running"
+    p.write_text(_json.dumps(meta, ensure_ascii=False))
+
+    TestClient(webapp.create_app())  # 重启加载即回写
+
+    on_disk = _json.loads(p.read_text())
+    assert on_disk["status"] == "error"
+    assert on_disk["images"][0]["anim_status"] == "error"
+
+
+def test_load_jobs_does_not_rewrite_healthy_jobs(client, tmp_path):
+    # 健康任务不该被无谓回写（避免每次重启刷一遍 mtime）
+    import json as _json
+
+    job_id = _animated_job(client)
+    p = tmp_path / job_id / "job.json"
+    before = p.stat().st_mtime_ns
+
+    TestClient(webapp.create_app())
+    assert p.stat().st_mtime_ns == before
+
+
 def test_styles_endpoint(client):
     data = client.get("/api/styles").json()
     assert any(s["id"] == "bojack" for s in data["styles"])

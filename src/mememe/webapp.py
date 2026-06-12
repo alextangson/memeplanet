@@ -244,13 +244,15 @@ def _load_jobs() -> dict[str, Job]:
             continue
         pack = _resolve_job_pack(meta_path, meta.get("pack_id", ""))
         status = meta.get("status", "done")
-        if status == "running":  # server died mid-job
+        reset = status == "running"  # server died mid-job
+        if reset:
             status = "error"
         images = meta.get("images", [])
         for img in images:  # server died mid-animation → don't show 「动图中」 forever
             if img.get("anim_status") == "running":
                 img["anim_status"] = "error"
-        jobs[meta["job_id"]] = Job(
+                reset = True
+        job = Job(
             id=meta["job_id"],
             pack=pack,
             selfie=b"",
@@ -267,6 +269,9 @@ def _load_jobs() -> dict[str, Job]:
             images=images,
             collage_url=meta.get("collage_url", ""),
         )
+        if reset:  # 回写磁盘，否则巡检/admin 读盘永远误报僵尸 running
+            _save_meta(job)
+        jobs[meta["job_id"]] = job
     return jobs
 
 
